@@ -1,29 +1,24 @@
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from django.urls import include, path
+from .views import CustomUserViewSet, TagViewSet, IngredientViewSet, RecipeViewSet
 
 
 router = DefaultRouter()
 router.register(
-    'users',
-    CustomUserViewSet,
-    basename='users',
+    r'users', CustomUserViewSet, basename='users',
 )
-
-auth_patterns = [
-    path(
-        'signup/', CustomUserViewSet.as_view(
-            {'post': 'signup'}, name='signup',
-        )
-    )
-    path(
-        'token/', CustomUserViewSet.as_view(
-            {'post': 'token'}, name='token',
-        )
-    )
-]
+router.register(
+    r'tags', TagViewSet, basename='tags',
+)
+router.register(
+    r'ingredients', IngredientViewSet, basename='ingredients',
+)
+router.register(
+    r'recipes', RecipeViewSet, basename='recipes',
+)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('users/auth/', include(auth_patterns)),
+    path('auth/', include('djoser.urls.authtoken')),
 ]

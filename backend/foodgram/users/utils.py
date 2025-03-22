@@ -3,7 +3,7 @@ import re
 from rest_framework import serializers
 
 
-def username_validator(value):
+def username_and_password_validator(value):
     if not re.match(r'^[\w.@+-]+$', value):
         raise serializers.ValidationError(
             '''Username can only contain letters,
