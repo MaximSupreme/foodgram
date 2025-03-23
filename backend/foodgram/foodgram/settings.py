@@ -1,11 +1,15 @@
 import os
 
 from datetime import timedelta
-
+from dotenv import load_dotenv
 from pathlib import Path
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+dotenv_path = BASE_DIR / '.env'
+
+load_dotenv(dotenv_path=dotenv_path)
 
 SECRET_KEY = 'django-insecure-%bk+e_uxwr^$k(1h4_th1r!a_xl+ned6@_rq6!=w$oo(v3fg6@'
 
@@ -22,6 +26,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt',
     'djoser',
     'api.apps.ApiConfig',
     'users.apps.UsersConfig',
@@ -89,14 +95,8 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
-}
-
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 
@@ -112,10 +112,12 @@ USE_TZ = True
 
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'collected_static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+EMAIL_FILE_PATH = BASE_DIR / 'email'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
