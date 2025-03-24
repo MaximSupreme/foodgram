@@ -1,18 +1,16 @@
-from drf_base64.fields import Base64ImageField
-from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
-from rest_framework import viewsets, generics, permissions, status
-from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from drf_base64.fields import Base64ImageField
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
-from users.serializers import (
-    CustomUserSerializer,
-    CustomUserCreateSerializer,
-    CustomUserResponseOnCreateSerializer,
-    SetAvatarSerializer,
-    SetAvatarResponseSerializer,
-    SetPasswordSerializer
-)
+from rest_framework.response import Response
+
+from users.serializers import (CustomUserCreateSerializer,
+                               CustomUserResponseOnCreateSerializer,
+                               CustomUserSerializer,
+                               SetAvatarResponseSerializer,
+                               SetAvatarSerializer, SetPasswordSerializer)
 
 CustomUser = get_user_model()
 

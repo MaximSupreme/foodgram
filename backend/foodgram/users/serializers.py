@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 
 from api.constants import MIN_PASSWORD_LENGTH
 
-
 CustomUser = get_user_model()
 
 

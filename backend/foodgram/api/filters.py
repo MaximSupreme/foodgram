@@ -1,5 +1,5 @@
-from django_filters.rest_framework import CharFilter, FilterSet
 from django.contrib.auth import get_user_model
+from django_filters.rest_framework import CharFilter, FilterSet
 
 from users.models import CustomUser
 

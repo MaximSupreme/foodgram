@@ -1,12 +1,9 @@
 from django.contrib.auth import get_user_model
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
 
-from .constants import (
-    MAX_STR_AND_SLUG_CHAR, MAX_STRING_CHAR
-)
-
+from .constants import MAX_STR_AND_SLUG_CHAR, MAX_STRING_CHAR
 
 CustomUser = get_user_model()
 
@@ -55,7 +52,6 @@ class Ingredient(models.Model):
 
 
 class Recipe(models.Model):
-    """Recipe model"""
     author = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,

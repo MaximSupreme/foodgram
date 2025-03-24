@@ -1,24 +1,23 @@
 import base64
+
 import django_filters
-
-from django.http import HttpResponse
 from django.conf import settings
-from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, viewsets, status
-from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.response import Response
+from rest_framework import filters, permissions, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound
-
-from .serializers import (
-    TagSerializer, IngredientSerializer, RecipeListSerializer,
-    RecipeCreateSerializer, RecipeMinifiedSerializer, RecipeUpdateSerializer
-)
-from .models import Tag, Ingredient, Recipe
-from .permissions import IsAuthorOrReadOnly
+from rest_framework.response import Response
 from users.serializers import CustomUserSerializer
 
+from .models import Ingredient, Recipe, Tag
+from .permissions import IsAuthorOrReadOnly
+from .serializers import (
+    IngredientSerializer, RecipeCreateSerializer, RecipeListSerializer,
+    RecipeMinifiedSerializer,RecipeUpdateSerializer, TagSerializer
+)
 
 CustomUser = get_user_model()
 
@@ -27,6 +26,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [permissions.AllowAny]
+
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
@@ -40,7 +40,9 @@ class RecipeFilter(django_filters.FilterSet):
     is_favorited = django_filters.NumberFilter(method='filter_is_favorited')
     is_in_shopping_cart = django_filters.NumberFilter(method='filter_is_in_shopping_cart')
     author = django_filters.NumberFilter(field_name='author')
-    tags = django_filters.ModelMultipleChoiceFilter(field_name='tags', to_field_name='slug', queryset=Tag.objects.all())
+    tags = django_filters.ModelMultipleChoiceFilter(
+        field_name='tags', to_field_name='slug', queryset=Tag.objects.all()
+    )
 
     class Meta:
         model = Recipe
@@ -130,7 +132,6 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 return Response({'detail': 'Recipe is not in shopping cart.'}, status=status.HTTP_400_BAD_REQUEST)
             user.shopping_cart.remove(recipe)
             return Response(status=status.HTTP_204_NO_CONTENT)
-
 
     @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
     def get_link(self, request, pk=None):

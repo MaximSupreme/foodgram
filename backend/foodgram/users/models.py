@@ -1,11 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from api.constants import (
-    MAX_LENGTH_USER_BIO_INFO,
-    MAX_STRING_CHAR, ROLE_ADMIN, ROLE_USER,
-    MAX_ROLE_LENGTH, ROLES
-)
+from api.constants import MAX_STRING_CHAR
+
 
 class CustomUser(AbstractUser):
     email = models.EmailField(
