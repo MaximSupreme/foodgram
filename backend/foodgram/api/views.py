@@ -1,4 +1,5 @@
 import base64
+import hashlib
 
 import django_filters
 from django.conf import settings
@@ -110,9 +111,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(
-            detail=True, methods=['post', 'delete'],
-            permission_classes=[permissions.IsAuthenticated]
-        )
+        detail=True, methods=['post', 'delete'],
+        permission_classes=[permissions.IsAuthenticated]
+    )
     def favorite(self, request, pk=None):
         recipe = self.get_object()
         user = request.user
@@ -137,9 +138,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
-            detail=True, methods=['post', 'delete'],
-            permission_classes=[permissions.IsAuthenticated]
-        )
+        detail=True, methods=['post', 'delete'],
+        permission_classes=[permissions.IsAuthenticated]
+    )
     def shopping_cart(self, request, pk=None):
         recipe = self.get_object()
         user = request.user
@@ -164,9 +165,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
-            detail=True, methods=['get'],
-            permission_classes=[permissions.AllowAny]
-        )
+        detail=True, methods=['get'],
+        permission_classes=[permissions.AllowAny]
+    )
     def get_link(self, request, pk=None):
         recipe = self.get_object()
         salt = settings.SECRET_KEY
@@ -187,9 +188,9 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         return CustomUser.objects.filter(subscribers=self.request.user)
 
     @action(
-            detail=True, methods=['post', 'delete'],
-            permission_classes=[permissions.IsAuthenticated]
-        )
+        detail=True, methods=['post', 'delete'],
+        permission_classes=[permissions.IsAuthenticated]
+    )
     def subscribe(self, request, pk=None):
         user_to_subscribe = get_object_or_404(CustomUser, pk=pk)
         if request.method == 'POST':
