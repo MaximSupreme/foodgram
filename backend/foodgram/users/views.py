@@ -42,9 +42,16 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
                     user.avatar = Base64ImageField().to_internal_value(avatar_data)
                     user.save()
                 except Exception as e:
-                    return Response({'avatar': [str(e)]}, status=status.HTTP_400_BAD_REQUEST)
-                return Response(SetAvatarResponseSerializer({'avatar': user.avatar.url}).data)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {'avatar': [str(e)]},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                return Response(SetAvatarResponseSerializer(
+                    {'avatar': user.avatar.url}).data
+                )
+            return Response(
+                serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
         elif request.method == 'DELETE':
             if user.avatar:
                 user.avatar.delete()
@@ -62,8 +69,12 @@ class UserCreate(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        response_data = CustomUserResponseOnCreateSerializer(serializer.instance).data
-        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+        response_data = CustomUserResponseOnCreateSerializer(
+            serializer.instance
+        ).data
+        return Response(
+            response_data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
 
 class SetPasswordView(generics.GenericAPIView):
@@ -78,7 +89,10 @@ class SetPasswordView(generics.GenericAPIView):
                 user.set_password(serializer.data.get('new_password'))
                 user.save()
                 return Response(status=status.HTTP_204_NO_CONTENT)
-            return Response({'current_password': ['Wrong password.']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'current_password': ['Wrong password.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -99,24 +113,42 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
         if page is not None:
-            serializer = self.get_serializer(page, many=True, context={'request': request})
+            serializer = self.get_serializer(
+                page, many=True, context={'request': request}
+            )
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True, context={'request': request})
+        serializer = self.get_serializer(
+            queryset, many=True, context={'request': request}
+        )
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[permissions.IsAuthenticated])
+    @action(
+            detail=True, methods=['post', 'delete'],
+            permission_classes=[permissions.IsAuthenticated]
+        )
     def subscribe(self, request, pk=None):
         user_to_subscribe = get_object_or_404(CustomUser, pk=pk)
         if request.method == 'POST':
             if request.user == user_to_subscribe:
-                return Response({'detail': 'Cannot subscribe to yourself.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'detail': 'Cannot subscribe to yourself.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             if request.user.subscriber.filter(author=user_to_subscribe).exists():
-                return Response({'detail': 'Already subscribed.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'detail': 'Already subscribed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             request.user.subscriber.add(user_to_subscribe)
-            serializer = CustomUserSerializer(user_to_subscribe, context={'request': request})
+            serializer = CustomUserSerializer(
+                user_to_subscribe, context={'request': request}
+            )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         elif request.method == 'DELETE':
             if not request.user.subscriber.filter(author=user_to_subscribe).exists():
-                return Response({'detail': 'Not subscribed.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {'detail': 'Not subscribed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             request.user.subscriber.remove(user_to_subscribe)
             return Response(status=status.HTTP_204_NO_CONTENT)

@@ -124,4 +124,3 @@ EMAIL_FILE_PATH = BASE_DIR / 'email'
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-

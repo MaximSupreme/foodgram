@@ -25,7 +25,9 @@ class IngredientSerializer(serializers.ModelSerializer):
 class IngredientInRecipeSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source='ingredient.id')
     name = serializers.ReadOnlyField(source='ingredient.name')
-    measurement_unit = serializers.ReadOnlyField(source='ingredient.measurement_unit')
+    measurement_unit = serializers.ReadOnlyField(
+        source='ingredient.measurement_unit'
+    )
     amount = serializers.IntegerField()
 
     class Meta:
@@ -85,8 +87,15 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = ('id', 'tags', 'author', 'ingredients', 'is_favorited', 'is_in_shopping_cart', 'name', 'image', 'text', 'cooking_time')
-        read_only_fields = ('id', 'tags', 'author', 'ingredients', 'is_favorited', 'is_in_shopping_cart')
+        fields = (
+            'id', 'tags', 'author', 'ingredients',
+            'is_favorited', 'is_in_shopping_cart',
+            'name', 'image', 'text', 'cooking_time'
+        )
+        read_only_fields = (
+            'id', 'tags', 'author', 'ingredients',
+            'is_favorited', 'is_in_shopping_cart'
+        )
 
     def get_ingredients(self, obj):
         ingredients = RecipeIngredient.objects.filter(recipe=obj)
@@ -112,36 +121,56 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = ('id', 'ingredients', 'tags', 'image', 'name', 'text', 'cooking_time')
+        fields = (
+            'id', 'ingredients', 'tags',
+            'image', 'name', 'text', 'cooking_time'
+        )
         read_only_fields = ('id',)
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop('ingredients')
         tags_data = validated_data.pop('tags')
-        recipe = Recipe.objects.create(author=self.context['request'].user, **validated_data)
+        recipe = Recipe.objects.create(
+            author=self.context['request'].user, **validated_data
+        )
         for ingredient_data in ingredients_data:
             ingredient = Ingredient.objects.get(id=ingredient_data['id'])
-            RecipeIngredient.objects.create(recipe=recipe, ingredient=ingredient, amount=ingredient_data['amount'])
+            RecipeIngredient.objects.create(
+                recipe=recipe, ingredient=ingredient,
+                amount=ingredient_data['amount']
+            )
         recipe.tags.set(tags_data)
         return recipe
 
 
 class RecipeUpdateSerializer(serializers.ModelSerializer):
-    ingredients = serializers.ListField(child=serializers.DictField(), required=False)
-    tags = serializers.ListField(child=serializers.IntegerField(), required=False)
+    ingredients = serializers.ListField(
+        child=serializers.DictField(), required=False
+    )
+    tags = serializers.ListField(
+        child=serializers.IntegerField(), required=False
+    )
     image = Base64ImageField(required=False)
 
     class Meta:
         model = Recipe
-        fields = ('ingredients', 'tags', 'image', 'name', 'text', 'cooking_time')
+        fields = (
+            'ingredients', 'tags', 'image',
+            'name', 'text', 'cooking_time'
+        )
 
     def update(self, instance, validated_data):
         if 'ingredients' in validated_data:
             ingredients_data = validated_data.pop('ingredients')
             instance.recipeingredient_set.all().delete()
             for ingredient_data in ingredients_data:
-                ingredient = Ingredient.objects.get(id=ingredient_data['id'])
-                RecipeIngredient.objects.create(recipe=instance, ingredient=ingredient, amount=ingredient_data['amount'])
+                ingredient = Ingredient.objects.get(
+                    id=ingredient_data['id']
+                )
+                RecipeIngredient.objects.create(
+                    recipe=instance, ingredient=ingredient,
+                    amount=ingredient_data['amount']
+                )
         if 'tags' in validated_data:
             tags_data = validated_data.pop('tags')
             instance.tags.set(tags_data)

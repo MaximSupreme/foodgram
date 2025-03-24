@@ -86,7 +86,9 @@ class Recipe(models.Model):
         ],
         verbose_name='Время приготовления (в минутах)'
     )
-    favorites = models.ManyToManyField(CustomUser, related_name='favorites', blank=True)
+    favorites = models.ManyToManyField(
+        CustomUser, related_name='favorites', blank=True
+    )
 
     class Meta:
         verbose_name = 'Рецепт'
@@ -126,4 +128,5 @@ class RecipeIngredient(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.ingredient.name} ({self.amount} {self.ingredient.measurement_unit})'
+        return f'({self.ingredient.name}) ' \
+               f'({self.amount} {self.ingredient.measurement_unit})'
