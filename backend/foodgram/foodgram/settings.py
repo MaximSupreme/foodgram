@@ -1,9 +1,7 @@
 import os
-
-from datetime import timedelta
-from dotenv import load_dotenv
 from pathlib import Path
 
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -11,12 +9,11 @@ dotenv_path = BASE_DIR / '.env'
 
 load_dotenv(dotenv_path=dotenv_path)
 
-SECRET_KEY = 'django-insecure-%bk+e_uxwr^$k(1h4_th1r!a_xl+ned6@_rq6!=w$oo(v3fg6@'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '').split(',')]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -68,6 +65,11 @@ WSGI_APPLICATION = 'foodgram.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'django'),
+        'USER': os.getenv('POSTGRES_USER', 'django'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', ''),
+        'PORT': os.getenv('DB_PORT', 5432),
     }
 }
 

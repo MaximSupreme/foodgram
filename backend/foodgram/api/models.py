@@ -90,6 +90,7 @@ class Recipe(models.Model):
         ],
         verbose_name='Время приготовления (в минутах)'
     )
+    favorites = models.ManyToManyField(CustomUser, related_name='favorites', blank=True)
 
     class Meta:
         verbose_name = 'Рецепт'
@@ -98,6 +99,10 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.name
+
+    @property
+    def total_favorites(self):
+        return self.favorites.count()
 
 
 class RecipeIngredient(models.Model):
