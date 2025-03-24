@@ -27,7 +27,7 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
     def me(self, request):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
-    
+
     @action(
         detail=False, methods=['put', 'delete'], url_path='me/avatar',
         permission_classes=[permissions.IsAuthenticated]
@@ -39,7 +39,9 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
             if serializer.is_valid():
                 avatar_data = serializer.validated_data['avatar']
                 try:
-                    user.avatar = Base64ImageField().to_internal_value(avatar_data)
+                    user.avatar = Base64ImageField().to_internal_value(
+                        avatar_data
+                    )
                     user.save()
                 except Exception as e:
                     return Response(
@@ -123,9 +125,9 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
     @action(
-            detail=True, methods=['post', 'delete'],
-            permission_classes=[permissions.IsAuthenticated]
-        )
+        detail=True, methods=['post', 'delete'],
+        permission_classes=[permissions.IsAuthenticated]
+    )
     def subscribe(self, request, pk=None):
         user_to_subscribe = get_object_or_404(CustomUser, pk=pk)
         if request.method == 'POST':
@@ -134,7 +136,9 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                     {'detail': 'Cannot subscribe to yourself.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            if request.user.subscriber.filter(author=user_to_subscribe).exists():
+            if request.user.subscriber.filter(
+                author=user_to_subscribe
+            ).exists():
                 return Response(
                     {'detail': 'Already subscribed.'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -145,7 +149,9 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         elif request.method == 'DELETE':
-            if not request.user.subscriber.filter(author=user_to_subscribe).exists():
+            if not request.user.subscriber.filter(
+                author=user_to_subscribe
+            ).exists():
                 return Response(
                     {'detail': 'Not subscribed.'},
                     status=status.HTTP_400_BAD_REQUEST

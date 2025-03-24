@@ -241,7 +241,9 @@ def download_shopping_cart(request):
     shopping_list = "Shopping List:\n\n"
     for ingredient_name, details in ingredients.items():
         shopping_list += f"- {ingredient_name} - {details['amount']} " \
-                        f"{details['measurement_unit']}\n"
+                         f"{details['measurement_unit']}\n"
     response = HttpResponse(shopping_list, content_type='text/plain')
-    response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+    response[
+        'Content-Disposition'
+    ] = 'attachment; filename="shopping_list.txt"'
     return response

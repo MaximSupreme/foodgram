@@ -6,7 +6,9 @@ User = get_user_model()
 
 
 class CustomUserAdmin(UserAdmin):
-    list_display = ('email', 'username', 'first_name', 'last_name', 'is_staff')
+    list_display = (
+        'email', 'username', 'first_name', 'last_name', 'is_staff'
+    )
     search_fields = ('email', 'username')
     ordering = ('email',)
 
@@ -14,9 +16,12 @@ class CustomUserAdmin(UserAdmin):
         (None, {'fields': ('email', 'username', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name')}),
         ('Permissions', {'fields': (
-            'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'
+            'is_active', 'is_staff', 'is_superuser',
+            'groups', 'user_permissions'
         )}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
         ('Custom Fields', {'fields': ('avatar',)}),
     )
+
+
 admin.site.register(User, CustomUserAdmin)
