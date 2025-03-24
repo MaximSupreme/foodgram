@@ -172,7 +172,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = self.get_object()
         salt = settings.SECRET_KEY
         text = f'{recipe.id}{salt}'
-        hashed_text = haslib.sha256(text.encode('utf-8')).digest()
+        hashed_text = hashlib.sha256(text.encode('utf-8')).digest()
         base64_encoded = base64.urlsafe_b64encode(hashed_text).decode('utf-8')
         shortened_hash = base64_encoded[:8]
         base_url = request.build_absolute_url('/')
@@ -199,7 +199,9 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
                     {'detail': 'Cannot subscribe to yourself.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            if request.user.subscriptions.filter(author=user_to_subscribe).exists():
+            if request.user.subscriptions.filter(
+                author=user_to_subscribe
+            ).exists():
                 return Response(
                     {'detail': 'Already subscribed.'},
                     status=status.HTTP_400_BAD_REQUEST
