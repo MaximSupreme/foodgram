@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
@@ -128,5 +129,29 @@ class RecipeIngredient(models.Model):
         ]
 
     def __str__(self):
-        return f'({self.ingredient.name}) ' \
-               f'({self.amount} {self.ingredient.measurement_unit})'
+        return (
+            f'({self.ingredient.name}) '
+            f'({self.amount} {self.ingredient.measurement_unit})'
+        )
+
+
+class CustomUser(AbstractUser):
+    email = models.EmailField(
+        max_length=MAX_STRING_CHAR,
+        unique=True,
+        verbose_name='Адрес электронной почты.'
+    )
+    avatar = models.ImageField(
+        upload_to='avatars/',
+        null=True,
+        blank=True,
+        verbose_name='Аватар.'
+    )
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+        ordering = ('username',)
+
+    def __str__(self):
+        return self.username
