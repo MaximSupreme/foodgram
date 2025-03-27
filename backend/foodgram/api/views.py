@@ -11,7 +11,6 @@ from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets, generics
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
 from .filters import RecipeFilter
@@ -20,7 +19,7 @@ from .models import Ingredient, Recipe, Tag
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeCreateSerializer, RecipeListSerializer,
-    RecipeMinifiedSerializer, RecipeUpdateSerializer, TagSerializer,
+    RecipeUpdateSerializer, TagSerializer,
     CustomUserCreateSerializer, CustomUserSerializer,
     SetAvatarResponseSerializer, SetAvatarSerializer,
     SetPasswordSerializer
@@ -62,8 +61,8 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
                 )
             return Response(
                 SetAvatarResponseSerializer(
-                {'avatar': user.avatar.url}
-            ).data
+                    {'avatar': user.avatar.url}
+                ).data
             )
         user.avatar.delete() if user.avatar else None
         user.save()
@@ -237,5 +236,7 @@ def download_shopping_cart(request):
             f"{ingredient['recipeingredient__ingredient__measurement_unit']}\n"
         )
     response = HttpResponse(shopping_list, content_type='text/plain')
-    response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+    response[
+        'Content-Disposition'
+    ] = 'attachment; filename="shopping_list.txt"'
     return response

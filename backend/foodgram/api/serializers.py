@@ -170,7 +170,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 )
             if id_field and id_field not in item:
                 raise serializers.ValidationError(
-                    f'Each {item_type} must have '{id_field}'.'
+                    f'Each {item_type} must have {id_field}.'
                 )
             if amount_field and amount_field not in item:
                 raise serializers.ValidationError(

@@ -7,7 +7,7 @@ from .serializers import RecipeMinifiedSerializer
 class AddDeleteRecipeMixin:
     def _get_list_queryset(self, user, list_name):
         return getattr(user, list_name)
-    
+
     def add_or_remove_recipe(self, request, pk=None, list_name=None):
         recipe = self.get_object()
         user = request.user()
