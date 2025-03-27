@@ -147,7 +147,9 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated]
     )
     def shopping_cart(self, request, pk=None):
-        return self.add_or_remove_recipe(request, pk=pk, list_name='shopping_cart')
+        return self.add_or_remove_recipe(
+            request, pk=pk, list_name='shopping_cart'
+        )
 
     @action(
         detail=True, methods=['get'],
