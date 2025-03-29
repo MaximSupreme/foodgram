@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 from .models import Ingredient, Recipe, RecipeIngredient, Tag
-from .constants import MIN_PASSWORD_LENGTH
+from .constants import MIN_PASSWORD_LENGTH, MAX_STRING_CHAR
 
 CustomUser = get_user_model()
 
@@ -45,6 +46,15 @@ class CustomUserResponseOnCreateSerializer(serializers.ModelSerializer):
 
 class SetAvatarSerializer(serializers.Serializer):
     avatar = serializers.CharField()
+
+    def validate_avatar(self, value):
+        try:
+            Base64ImageField().to_internal_value(value)
+        except serializers.ValidationError as e:
+            raise e
+        except Exception as e:
+            raise serializers.ValidationError(f"Invalid image {e}")
+        return value
 
 
 class SetAvatarResponseSerializer(serializers.Serializer):
@@ -140,6 +150,10 @@ class RecipeSerializer(serializers.ModelSerializer):
     ingredients = serializers.ListField(child=serializers.DictField())
     tags = serializers.ListField(child=serializers.IntegerField())
     image = Base64ImageField(required=False)
+    name = serializers.CharField(
+        max_length=200,
+        validators=[UniqueValidator(queryset=Recipe.objects.all())]
+    )
 
     class Meta:
         model = Recipe
@@ -149,96 +163,69 @@ class RecipeSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ('id',)
 
-    def validate(self, data):
-        ingredients = data.get('ingredients')
-        tags = data.get('tags')
-        if ingredients:
-            self.validate_items(ingredients, 'ingredient')
-        if tags:
-            self.validate_items(tags, 'tag')
-        return data
+    def validate_ingredients(self, ingredients):
+        for ingredient_data in ingredients:
+            if not isinstance(ingredient_data, dict):
+                raise serializers.ValidationError(
+                    'Each ingredient must be a dictionary.'
+                )
+            if 'id' not in ingredient_data or 'amount' not in ingredient_data:
+                raise serializers.ValidationError(
+                    'Each ingredient must have "id" and "amount".'
+                )
+            try:
+                ingredient_id = int(ingredient_data['id'])
+                amount = int(ingredient_data['amount'])
+            except ValueError:
+                raise serializers.ValidationError(
+                    'Ingredient "id" and "amount" must be integers.'
+                )
+            if not Ingredient.objects.filter(id=ingredient_id).exists():
+                raise serializers.ValidationError(
+                    f'Ingredient with id {ingredient_id} does not exist.'
+                )
+            if amount <= 0:
+                raise serializers.ValidationError(
+                    'Amount must be a positive integer.'
+                )
+        return ingredients
 
-    def validate_items(self, items, item_type):
-        model = Ingredient if item_type == 'ingredient' else Tag
-        expected_type = dict if item_type == 'ingredient' else int
-        id_field = 'id' if item_type == 'ingredient' else None
-        amount_field = 'amount' if item_type == 'ingredient' else None
-        for item in items:
-            if not isinstance(item, expected_type):
+    def validate_tags(self, tags):
+        for tag_id in tags:
+            if not isinstance(tag_id, int):
                 raise serializers.ValidationError(
-                    f'Each {item_type} must be a {expected_type.__name__}.'
+                    'Each tag ID must be an integer.'
                 )
-            if id_field and id_field not in item:
+            if not Tag.objects.filter(id=tag_id).exists():
                 raise serializers.ValidationError(
-                    f'Each {item_type} must have {id_field}.'
+                    f'Tag with id {tag_id} does not exist.'
                 )
-            if amount_field and amount_field not in item:
-                raise serializers.ValidationError(
-                    f'Each {item_type} must have {amount_field}.'
-                )
-            if id_field:
-                try:
-                    item_id = int(item[id_field])
-                    amount = int(item[amount_field])
-                except ValueError:
-                    raise serializers.ValidationError(
-                        f'{item_type} {id_field} and '
-                        f'{amount_field} must be integers.'
-                    )
-                if not model.objects.filter(id=item_id).exists():
-                    raise serializers.ValidationError(
-                        f'{item_type} with id {item_id} does not exist.'
-                    )
-                if amount <= 0:
-                    raise serializers.ValidationError(
-                        'Amount must be a positive integer.'
-                    )
-            else:
-                try:
-                    item_id = int(item)
-                except ValueError:
-                    raise serializers.ValidationError(
-                        f'{item_type} ID must be an integer.'
-                    )
-                if not model.objects.filter(id=item_id).exists():
-                    raise serializers.ValidationError(
-                        f'{item_type} with id {item_id} does not exist.'
-                    )
+        return tags
 
     def create_or_update(self, instance=None, validated_data=None):
         ingredients_data = validated_data.pop('ingredients', None)
         tags_data = validated_data.pop('tags', None)
+        if instance is None:
+            instance = Recipe.objects.create(
+                author=self.context['request'].user,
+                **validated_data
+            )
         if instance:
             instance.recipeingredient_set.all().delete()
         if ingredients_data is not None:
             recipe_ingredients = [
                 RecipeIngredient(
-                    recipe=instance if instance else None,
+                    recipe=instance,
                     ingredient_id=ingredient_data['id'],
                     amount=ingredient_data['amount']
                 )
                 for ingredient_data in ingredients_data
             ]
-            if instance is None:
-                recipe = Recipe.objects.create(
-                    author=self.context['request'].user,
-                    **validated_data
-                )
-                for recipe_ingredient in recipe_ingredients:
-                    recipe_ingredient.recipe = recipe
-                RecipeIngredient.objects.bulk_create(recipe_ingredients)
-            else:
-                RecipeIngredient.objects.bulk_create(recipe_ingredients)
+            RecipeIngredient.objects.bulk_create(recipe_ingredients)
         if tags_data is not None:
-            if instance:
-                instance.tags.set(tags_data)
-            else:
-                recipe.tags.set(tags_data)
-        if instance:
-            super().update(instance, validated_data)
-            return instance
-        else:
-            return recipe
+            instance.tags.set(tags_data)
+        instance = super().update(instance, validated_data)
+        return instance
 
     def create(self, validated_data):
         return self.create_or_update(

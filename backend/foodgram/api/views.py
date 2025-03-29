@@ -4,7 +4,6 @@ import hashlib
 from drf_base64.fields import Base64ImageField
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum
@@ -54,7 +53,7 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
             try:
                 user.avatar = Base64ImageField().to_internal_value(avatar_data)
                 user.save()
-            except ValidationError as e:
+            except Exception as e:
                 return Response(
                     {'avatar': [str(e)]},
                     status=status.HTTP_400_BAD_REQUEST
@@ -91,11 +90,6 @@ class SetPasswordView(generics.GenericAPIView):
             )
             user.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        else:
-            return Response(
-                {'current_password': ['Wrong password.']},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -193,31 +187,38 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def subscribe(self, request, pk=None):
         user_to_subscribe = get_object_or_404(CustomUser, pk=pk)
-        user_action = request.user.subscriptions.filter(
-            author=user_to_subscribe
-        ).exists()
-        if request.method == 'POST' and user_action:
-            if request.user == user_to_subscribe:
-                return Response(
-                    {'detail': 'Cannot subscribe to yourself.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            if user_action:
+        if request.user == user_to_subscribe:
+            return Response(
+                {'detail': 'Cannot subscribe to yourself.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if request.method == 'POST':
+            if request.user.subscriptions.filter(
+                author=user_to_subscribe
+            ).exists():
                 return Response(
                     {'detail': 'Already subscribed.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             request.user.subscriptions.add(user_to_subscribe)
-            return Response(
-                CustomUserSerializer(
-                    user_to_subscribe, context={'request': request}
-                ).data, status=status.HTTP_201_CREATED
+            serializer = CustomUserSerializer(
+                user_to_subscribe, context={'request': request}
             )
-        else:
-            return Response(
-                {'detail': 'Not subscribed.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if request.method == 'DELETE':
+            if not request.user.subscriptions.filter(
+                author=user_to_subscribe
+            ).exists():
+                return Response(
+                    {'detail': 'Not subscribed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            request.user.subscriptions.remove(user_to_subscribe)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'detail': 'Invalid request.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 @api_view(['GET'])

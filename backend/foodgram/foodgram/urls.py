@@ -13,10 +13,6 @@ urlpatterns = [
         'api/',
         include('api.urls'),
     ),
-    path(
-        'api/auth/',
-        include('users.urls')
-    ),
 ]
 
 if settings.DEBUG:

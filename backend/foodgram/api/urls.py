@@ -4,7 +4,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     IngredientViewSet, RecipeViewSet,
     TagViewSet, download_shopping_cart,
-    CustomUserViewSet, SubscriptionViewSet
+    CustomUserViewSet, SubscriptionViewSet,
+    UserCreate, SetPasswordView
 )
 
 router = DefaultRouter()
@@ -31,5 +32,19 @@ urlpatterns = [
     path(
         'recipes/download_shopping_cart/',
         download_shopping_cart, name='download_shopping_cart',
+    ),
+    path(
+        'users/', UserCreate.as_view(),
+        name='user-create'
+    ),
+    path(
+        '', include('djoser.urls')
+    ),
+    path(
+        '', include('djoser.urls.authtoken')
+    ),
+    path(
+        'users/set_password/', SetPasswordView.as_view(),
+        name='set-password'
     ),
 ]

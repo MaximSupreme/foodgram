@@ -24,11 +24,3 @@ class AddDeleteRecipeMixin:
                 RecipeMinifiedSerializer(recipe).data,
                 status=status.HTTP_201_CREATED
             )
-        else:  # DELETE
-            if not item_exists:
-                return Response(
-                    {'detail': 'Recipe is not in the list.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            list_queryset.remove(recipe)
-            return Response(status=status.HTTP_204_NO_CONTENT)
