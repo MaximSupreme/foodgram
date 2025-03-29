@@ -151,7 +151,7 @@ class RecipeSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(child=serializers.IntegerField())
     image = Base64ImageField(required=False)
     name = serializers.CharField(
-        max_length=200,
+        max_length=MAX_STRING_CHAR,
         validators=[UniqueValidator(queryset=Recipe.objects.all())]
     )
 
