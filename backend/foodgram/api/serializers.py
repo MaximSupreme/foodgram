@@ -210,7 +210,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 author=self.context['request'].user,
                 **validated_data
             )
-        if instance:
+        else:
             instance.recipeingredient_set.all().delete()
         if ingredients_data is not None:
             recipe_ingredients = [
@@ -224,7 +224,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             RecipeIngredient.objects.bulk_create(recipe_ingredients)
         if tags_data is not None:
             instance.tags.set(tags_data)
-        instance = super().update(instance, validated_data)
+        instance = self.update(instance, validated_data)
         return instance
 
     def create(self, validated_data):
