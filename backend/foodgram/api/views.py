@@ -90,9 +90,9 @@ class SetPasswordView(generics.GenericAPIView):
             )
             user.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response( 
-            {'current_password': ['Wrong password.']}, 
-            status=status.HTTP_400_BAD_REQUEST 
+        return Response(
+            {'current_password': ['Wrong password.']},
+            status=status.HTTP_400_BAD_REQUEST
         )
 
 
