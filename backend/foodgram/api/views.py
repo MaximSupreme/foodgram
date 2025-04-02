@@ -20,7 +20,7 @@ from .serializers import (
     IngredientSerializer, RecipeListSerializer,
     TagSerializer, CustomUserCreateSerializer,
     CustomUserSerializer, SetAvatarResponseSerializer,
-    SetAvatarSerializer, SetPasswordSerializer
+    SetAvatarSerializer, SetPasswordSerializer, RecipeSerializer
 )
 
 CustomUser = get_user_model()
@@ -124,9 +124,9 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == 'create':
-            return RecipeCreateSerializer
+            return RecipeSerializer
         elif self.action == 'update' or self.action == 'partial_update':
-            return RecipeUpdateSerializer
+            return RecipeSerializer
         return RecipeListSerializer
 
     def perform_create(self, serializer):
