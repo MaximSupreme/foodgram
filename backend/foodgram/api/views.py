@@ -17,11 +17,10 @@ from .mixins import AddDeleteRecipeMixin
 from .models import Ingredient, Recipe, Tag
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
-    IngredientSerializer, RecipeCreateSerializer, RecipeListSerializer,
-    RecipeUpdateSerializer, TagSerializer,
-    CustomUserCreateSerializer, CustomUserSerializer,
-    SetAvatarResponseSerializer, SetAvatarSerializer,
-    SetPasswordSerializer
+    IngredientSerializer, RecipeListSerializer,
+    TagSerializer, CustomUserCreateSerializer,
+    CustomUserSerializer, SetAvatarResponseSerializer,
+    SetAvatarSerializer, SetPasswordSerializer
 )
 
 CustomUser = get_user_model()

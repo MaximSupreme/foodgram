@@ -6,7 +6,27 @@ from django.utils.text import slugify
 
 from .constants import MAX_STR_AND_SLUG_CHAR, MAX_STRING_CHAR
 
-CustomUser = get_user_model()
+
+class CustomUser(AbstractUser):
+    email = models.EmailField(
+        max_length=MAX_STRING_CHAR,
+        unique=True,
+        verbose_name='Адрес электронной почты.'
+    )
+    avatar = models.ImageField(
+        upload_to='avatars/',
+        null=True,
+        blank=True,
+        verbose_name='Аватар.'
+    )
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+        ordering = ('username',)
+
+    def __str__(self):
+        return self.username
 
 
 class Tag(models.Model):
@@ -133,25 +153,3 @@ class RecipeIngredient(models.Model):
             f'({self.ingredient.name}) '
             f'({self.amount} {self.ingredient.measurement_unit})'
         )
-
-
-class CustomUser(AbstractUser):
-    email = models.EmailField(
-        max_length=MAX_STRING_CHAR,
-        unique=True,
-        verbose_name='Адрес электронной почты.'
-    )
-    avatar = models.ImageField(
-        upload_to='avatars/',
-        null=True,
-        blank=True,
-        verbose_name='Аватар.'
-    )
-
-    class Meta:
-        verbose_name = 'Пользователь'
-        verbose_name_plural = 'Пользователи'
-        ordering = ('username',)
-
-    def __str__(self):
-        return self.username

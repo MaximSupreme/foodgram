@@ -1,7 +1,7 @@
 version: '3'
 
 volumes:
-  foodgram_data:
+  db_data:
   static:
   media:
 
@@ -10,8 +10,9 @@ services:
     image: postgres:13.10
     env_file: .env
     volumes:
-      - foodgram_data:/var/lib/postgresql/data
+      - db_data:/var/lib/postgresql/data
   backend:
+    container_name: backend
     image: maximsupreme/foodgram_backend
     env_file: .env
     volumes:
