@@ -15,21 +15,18 @@ services:
 
 
   backend:
-    build:
-      context: ../backend/foodgram
-      dockerfile: Dockerfile
+    image: maximsupreme/foodgram_backend
     volumes:
       - static_volume:/backend_static
       - media_volume:/app/media
     depends_on:
       - db
     env_file: .env
+    restart: always
 
 
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
+    image: maximsupreme/foodgram_frontend
     volumes:
       - ./frontend/:/app/result_build/
     depends_on:
@@ -37,7 +34,7 @@ services:
 
 
   nginx:
-    build: ../nginx/
+    image: maximsupreme/foodgram_nginx
     ports:
       - "9090:80"
     volumes:
@@ -48,3 +45,4 @@ services:
     depends_on:
       - backend
       - frontend
+    restart: always

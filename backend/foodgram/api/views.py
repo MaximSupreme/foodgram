@@ -67,34 +67,6 @@ class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class UserCreate(generics.CreateAPIView):
-    queryset = CustomUser.objects.all()
-    serializer_class = CustomUserCreateSerializer
-    permission_classes = [permissions.AllowAny]
-
-
-class SetPasswordView(generics.GenericAPIView):
-    serializer_class = SetPasswordSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = request.user
-        if user.check_password(
-            serializer.validated_data.get('current_password')
-        ):
-            user.set_password(
-                serializer.validated_data.get('new_password')
-            )
-            user.save()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response(
-            {'current_password': ['Wrong password.']},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer

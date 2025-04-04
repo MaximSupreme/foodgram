@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     'djoser',
     'api.apps.ApiConfig',
     'django_filters',
+    'corsheaders',
 ]
 
 AUTH_USER_MODEL = 'api.CustomUser'
@@ -64,13 +65,12 @@ WSGI_APPLICATION = 'foodgram.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'dbsqlite3',
-        # 'NAME': os.getenv('POSTGRES_DB', 'django'),
-        # 'USER': os.getenv('POSTGRES_USER', 'django'),
-        # 'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        # 'HOST': os.getenv('DB_HOST', 'db'),
-        # 'PORT': os.getenv('DB_PORT', 5432),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'foodgram'),
+        'USER': os.getenv('POSTGRES_USER', 'foodgram_user'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', ''),
+        'PORT': os.getenv('DB_PORT', 5432),
     }
 }
 
@@ -122,5 +122,28 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 EMAIL_FILE_PATH = BASE_DIR / 'email'
 
+DJOSER = {
+    'LOGIN_FIELD': 'email',
+    'HIDE_USERS': False,
+    'SERIALIZERS': {
+        'user_create':
+        'api.serializers.CustomUserCreateSerializer',
+        'user':
+        'api.serializers.CustomUserSerializer',
+        'current_user':
+        'api.serializers.CustomUserSerializer',
+    },
+    'PERMISSIONS': {
+        'user': [
+            'rest_framework.permissions.AllowAny'
+        ],
+        'user_list': [
+            'rest_framework.permissions.AllowAny'
+        ],
+        'user_create': [
+            'rest_framework.permissions.AllowAny'
+        ]
+    },
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

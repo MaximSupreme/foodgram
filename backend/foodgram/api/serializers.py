@@ -31,19 +31,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
         return False
 
 
-class CustomUserCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = ('email', 'username', 'first_name', 'last_name', 'password')
-        extra_kwargs = {'password': {'write_only': True}}
-
-
-class CustomUserResponseOnCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CustomUser
-        fields = ('id', 'email', 'username', 'first_name', 'last_name')
-
-
 class SetAvatarSerializer(serializers.Serializer):
     avatar = serializers.CharField()
 
@@ -59,11 +46,6 @@ class SetAvatarSerializer(serializers.Serializer):
 
 class SetAvatarResponseSerializer(serializers.Serializer):
     avatar = serializers.URLField()
-
-
-class SetPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(write_only=True)
-    current_password = serializers.CharField(write_only=True)
 
 
 class TagSerializer(serializers.ModelSerializer):
