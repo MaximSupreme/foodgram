@@ -8,7 +8,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets, generics
+from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 
@@ -17,10 +17,9 @@ from .mixins import AddDeleteRecipeMixin
 from .models import Ingredient, Recipe, Tag
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
-    IngredientSerializer, RecipeListSerializer,
-    TagSerializer, CustomUserCreateSerializer,
+    IngredientSerializer, RecipeListSerializer, TagSerializer,
     CustomUserSerializer, SetAvatarResponseSerializer,
-    SetAvatarSerializer, SetPasswordSerializer, RecipeSerializer
+    SetAvatarSerializer, RecipeSerializer
 )
 
 CustomUser = get_user_model()
