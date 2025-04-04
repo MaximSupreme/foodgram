@@ -32,3 +32,4 @@ urlpatterns = [
         'recipes/download_shopping_cart/',
         download_shopping_cart, name='download_shopping_cart',
     ),
+]
