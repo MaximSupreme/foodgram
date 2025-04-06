@@ -1,10 +1,12 @@
+import re
+
 from django.contrib.auth import get_user_model
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from .models import Ingredient, Recipe, RecipeIngredient, Tag
-from .constants import MIN_PASSWORD_LENGTH, MAX_STRING_CHAR
+from .models import Ingredient, Recipe, RecipeIngredient, Tag, Subscription
+from .constants import MAX_STRING_CHAR
 
 CustomUser = get_user_model()
 
@@ -12,23 +14,81 @@ CustomUser = get_user_model()
 class CustomUserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
-    password = serializers.CharField(
-        write_only=True, required=True, min_length=MIN_PASSWORD_LENGTH
-    )
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = (
             'id', 'email', 'username', 'first_name', 'last_name',
-            'is_subscribed', 'avatar'
+            'is_subscribed', 'avatar', 'recipes', 'recipes_count',
         )
-        read_only_fields = ('id', 'is_subscribed')
+        extra_kwargs = {
+            'avatar': {'allow_null': True}
+        }
+        read_only_fields = ('id', 'is_subscribed', 'recipes', 'recipes_count')
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
-        if request and request.user.if_authenticated:
-            return request.user.subscriber.filter(author=obj).exists()
+        if request and request.user.is_authenticated:
+            return Subscription.objects.filter(
+                user=request.user, author=obj
+            ).exists()
         return False
+
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        recipes = obj.recipes.all()
+        recipes_limit = request.query_params.get('recipes_limit')
+
+        if recipes_limit and recipes_limit.isdigit():
+            recipes = recipes[:int(recipes_limit)]
+
+        return RecipeMinifiedSerializer(
+            recipes, many=True, context=self.context
+        ).data
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
+
+    def get_avatar(self, obj):
+        return obj.avatar.url if obj.avatar else None
+
+
+class CustomUserCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = (
+            'id', 'username', 'email', 'password',
+            'first_name', 'last_name'
+        )
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def create(self, validated_data):
+        user = CustomUser.objects.create_user(**validated_data)
+        return user
+
+    def validate_username(self, name):
+        if not re.match(r'^[\w.@+-]+$', name):
+            raise serializers.ValidationError(
+                'Invalid username. Use letters, numbers or [.@+-]'
+            )
+        return name
+
+    def validate(self, data):
+        username = data.get('username')
+        email = data.get('email')
+        if CustomUser.objects.filter(username=username, email=email).exists():
+            return data
+        if CustomUser.objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                {'email': 'This email is already in use by another user.'}
+            )
+        if CustomUser.objects.filter(username=username).exists():
+            raise serializers.ValidationError(
+                {'username': 'This username is already taken.'}
+            )
+        return data
 
 
 class SetAvatarSerializer(serializers.Serializer):

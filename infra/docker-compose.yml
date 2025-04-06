@@ -5,6 +5,9 @@ volumes:
   static_volume:
   media_volume:
 
+networks:
+  foodgram_network:
+    driver: bridge
 
 services:
   db:
@@ -12,6 +15,8 @@ services:
     env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - foodgram_network
 
 
   backend:
@@ -24,6 +29,8 @@ services:
     depends_on:
       - db
     env_file: .env
+    networks:
+      - foodgram_network
 
 
   frontend:
@@ -34,6 +41,8 @@ services:
       - ./frontend/:/app/result_build/
     depends_on:
       - backend
+    networks:
+      - foodgram_network
 
 
   nginx:
@@ -48,3 +57,5 @@ services:
     depends_on:
       - backend
       - frontend
+    networks:
+      - foodgram_network

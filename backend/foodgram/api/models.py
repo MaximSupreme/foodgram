@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
 
 from .constants import MAX_STR_AND_SLUG_CHAR, MAX_STRING_CHAR
 
@@ -26,6 +27,34 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Subscription(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='subscriptions',
+        on_delete=models.CASCADE,
+        verbose_name='Подписчик'
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name='subscribers',
+        on_delete=models.CASCADE,
+        verbose_name='Автор'
+    )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'],
+                name='unique_subscription'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user} подписан на {self.author}'
 
 
 class Tag(models.Model):
@@ -97,6 +126,7 @@ class Recipe(models.Model):
     )
     tags = models.ManyToManyField(
         Tag,
+        through='TagRecipe',
         related_name='recipes',
         verbose_name='Теги'
     )
@@ -152,3 +182,73 @@ class RecipeIngredient(models.Model):
             f'({self.ingredient.name}) '
             f'({self.amount} {self.ingredient.measurement_unit})'
         )
+
+
+class TagRecipe(models.Model):
+    tag = models.ForeignKey(
+        Tag,
+        on_delete=models.CASCADE,
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        verbose_name = 'Тег рецепта'
+        verbose_name_plural = 'Теги рецепта'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tag', 'recipe'],
+                name='unique_tag_recipe'
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.tag} - {self.recipe}'
+
+
+class ShoppingCart(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='user_shopping_cart'
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='recipe_for_shopping_cart'
+    )
+
+    class Meta:
+        verbose_name = 'Список покупок'
+        verbose_name_plural = 'Списки покупок'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                name='unique_shopping_cart'
+            )
+        ]
+
+
+class FavoriteRecipe(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='favorite',
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name='favorite',
+    )
+
+    class Meta:
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранное'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                name='unique_favorite',
+            )
+        ]

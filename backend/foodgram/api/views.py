@@ -25,17 +25,17 @@ from .serializers import (
 CustomUser = get_user_model()
 
 
-class CustomUserViewSet(viewsets.ReadOnlyModelViewSet):
+class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
 
     @action(
         detail=False, methods=['get'], url_path='me',
         permission_classes=[permissions.IsAuthenticated]
     )
     def me(self, request):
-        serializer = self.get_serializer(request.user)
+        serializer = self.get_serializer(request.user, context={'request': request})
         return Response(serializer.data)
 
     @action(
@@ -140,6 +140,7 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
+        print(f'User in SubscriptionViewSet: {self.request.user}')
         return CustomUser.objects.filter(subscribers=self.request.user)
 
     def list(self, request, *args, **kwargs):
@@ -193,6 +194,7 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
 def download_shopping_cart(request):
+    print(f'User in download_cart {request.user}')
     user = request.user
     ingredients = user.shopping_cart.all().values(
         'recipeingredient__ingredient__name',
