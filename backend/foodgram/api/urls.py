@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     IngredientViewSet, RecipeViewSet,
     TagViewSet, download_shopping_cart,
-    SubscriptionViewSet, CustomUserViewSet
+    SubscriptionViewSet, CustomUserViewSet,
 )
 
 router = DefaultRouter()

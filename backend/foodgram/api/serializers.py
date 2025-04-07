@@ -14,19 +14,17 @@ CustomUser = get_user_model()
 class CustomUserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
-    recipes = serializers.SerializerMethodField()
-    recipes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = (
             'id', 'email', 'username', 'first_name', 'last_name',
-            'is_subscribed', 'avatar', 'recipes', 'recipes_count',
+            'is_subscribed', 'avatar',
         )
         extra_kwargs = {
             'avatar': {'allow_null': True}
         }
-        read_only_fields = ('id', 'is_subscribed', 'recipes', 'recipes_count')
+        read_only_fields = ('id', 'is_subscribed',)
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
@@ -36,21 +34,6 @@ class CustomUserSerializer(serializers.ModelSerializer):
             ).exists()
         return False
 
-    def get_recipes(self, obj):
-        request = self.context.get('request')
-        recipes = obj.recipes.all()
-        recipes_limit = request.query_params.get('recipes_limit')
-
-        if recipes_limit and recipes_limit.isdigit():
-            recipes = recipes[:int(recipes_limit)]
-
-        return RecipeMinifiedSerializer(
-            recipes, many=True, context=self.context
-        ).data
-
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
-
     def get_avatar(self, obj):
         return obj.avatar.url if obj.avatar else None
 
@@ -59,10 +42,14 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = (
-            'id', 'username', 'email', 'password',
+            'username', 'email', 'password',
             'first_name', 'last_name'
         )
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'first_name': {'required': True},
+            'last_name': {'required': True},
+        }
 
     def create(self, validated_data):
         user = CustomUser.objects.create_user(**validated_data)

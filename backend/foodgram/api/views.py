@@ -11,6 +11,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.pagination import LimitOffsetPagination
 
 from .filters import RecipeFilter
 from .mixins import AddDeleteRecipeMixin
@@ -19,7 +20,7 @@ from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeListSerializer, TagSerializer,
     CustomUserSerializer, SetAvatarResponseSerializer,
-    SetAvatarSerializer, RecipeSerializer
+    SetAvatarSerializer, RecipeSerializer, CustomUserCreateSerializer,
 )
 
 CustomUser = get_user_model()
@@ -28,7 +29,22 @@ CustomUser = get_user_model()
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.AllowAny,]
+    pagination_class = LimitOffsetPagination
+
+    def create(self, request, *args, **kwargs):
+        serializer = CustomUserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        response_data = {
+            'email': user.email,
+            'id': user.id,
+            'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+        }
+
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(
         detail=False, methods=['get'], url_path='me',
