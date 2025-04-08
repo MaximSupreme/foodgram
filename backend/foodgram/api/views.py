@@ -13,7 +13,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 
-from .filters import RecipeFilter
+from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
 from .models import Ingredient, Recipe, Tag
 from .permissions import IsAuthorOrReadOnly
@@ -93,8 +93,8 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     permission_classes = [permissions.AllowAny]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['^name']
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = IngredientFilter
     pagination_class = None
 
 
@@ -112,14 +112,21 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     ordering_fields = ['name', 'cooking_time']
 
     def get_serializer_class(self):
-        if self.action == 'create':
-            return RecipeSerializer
-        elif self.action == 'update' or self.action == 'partial_update':
+        if self.action == 'create' or self.action == 'update' or self.action == 'partial_update':
             return RecipeSerializer
         return RecipeListSerializer
 
     def perform_create(self, serializer):
         serializer.save()
+        recipe = serializer.instance
+        list_serializer = RecipeListSerializer(recipe, context=self.get_serializer_context())
+        return Response(list_serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        serializer.save()
+        recipe = serializer.instance
+        list_serializer = RecipeListSerializer(recipe, context=self.get_serializer_context())
+        return Response(list_serializer.data, status=status.HTTP_200_OK)
 
     @action(
         detail=True, methods=['post', 'delete'],

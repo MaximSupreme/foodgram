@@ -5,7 +5,7 @@ from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from .models import Ingredient, Recipe, RecipeIngredient, Tag, Subscription
+from .models import Ingredient, Recipe, RecipeIngredient, Tag, Subscription, ShoppingCart
 from .constants import MAX_STRING_CHAR
 
 CustomUser = get_user_model()
@@ -165,7 +165,10 @@ class RecipeListSerializer(serializers.ModelSerializer):
     def is_in_list(self, obj, list_name):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return getattr(obj, list_name).filter(user=request.user).exists()
+            if list_name == 'favorites':
+                return obj.favorite.filter(user=request.user).exists()
+            if list_name == 'shopping_cart':
+                return ShoppingCart.objects.filter(recipe=obj, user=request.user).exists()
         return False
 
     def get_is_favorited(self, obj):
@@ -177,13 +180,15 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
 class RecipeSerializer(serializers.ModelSerializer):
     tags = serializers.PrimaryKeyRelatedField(
-        many=True, read_only=False,
-        queryset=Tag.objects.all()
+        many=True, queryset=Tag.objects.all()
     )
     image = Base64ImageField(required=False)
     name = serializers.CharField(
         max_length=MAX_STRING_CHAR,
         validators=[UniqueValidator(queryset=Recipe.objects.all())]
+    )
+    ingredients = IngredientInRecipeSerializer(
+        source='ingredient_list', many=True
     )
 
     class Meta:

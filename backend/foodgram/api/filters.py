@@ -1,7 +1,7 @@
 import django_filters
 from django_filters.rest_framework import CharFilter, FilterSet
 
-from .models import CustomUser, Recipe, Tag, FavoriteRecipe
+from .models import CustomUser, Recipe, Tag, FavoriteRecipe, Ingredient
 
 
 class CustomUserFilter(FilterSet):
@@ -21,7 +21,7 @@ class RecipeFilter(django_filters.FilterSet):
     )
     author = django_filters.NumberFilter(field_name='author')
     tags = django_filters.ModelMultipleChoiceFilter(
-        field_name='tags', to_field_name='slug', queryset=Tag.objects.all()
+        field_name='tags', queryset=Tag.objects.all()
     )
 
     class Meta:
@@ -42,3 +42,11 @@ class RecipeFilter(django_filters.FilterSet):
         if value == 1 and user.is_authenticated:
             return queryset.filter(recipe_for_shopping_cart__user=user)
         return queryset
+
+
+class IngredientFilter(django_filters.FilterSet):
+    name = django_filters.CharFilter(lookup_expr='startswith')
+
+    class Meta:
+        model = Ingredient
+        fields = ['name']
