@@ -86,6 +86,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = None
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -94,6 +95,7 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
     filter_backends = [filters.SearchFilter]
     search_fields = ['^name']
+    pagination_class = None
 
 
 class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
@@ -117,7 +119,7 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         return RecipeListSerializer
 
     def perform_create(self, serializer):
-        serializer.save(author=self.request.user)
+        serializer.save()
 
     @action(
         detail=True, methods=['post', 'delete'],

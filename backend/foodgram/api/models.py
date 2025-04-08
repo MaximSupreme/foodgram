@@ -136,8 +136,11 @@ class Recipe(models.Model):
         ],
         verbose_name='Время приготовления (в минутах)'
     )
-    favorites = models.ManyToManyField(
-        CustomUser, related_name='favorites', blank=True
+    shopping_cart = models.ManyToManyField(
+        CustomUser,
+        through='ShoppingCart',
+        related_name='recipes_in_shopping_cart',
+        verbose_name='Список покупок пользователей.'
     )
 
     class Meta:
@@ -150,7 +153,7 @@ class Recipe(models.Model):
 
     @property
     def total_favorites(self):
-        return self.favorites.count()
+        return self.favorite.count()
 
 
 class RecipeIngredient(models.Model):

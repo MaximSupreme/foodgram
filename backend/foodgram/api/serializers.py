@@ -176,8 +176,10 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    ingredients = serializers.ListField(child=serializers.DictField())
-    tags = serializers.ListField(child=serializers.IntegerField())
+    tags = serializers.PrimaryKeyRelatedField(
+        many=True, read_only=False,
+        queryset=Tag.objects.all()
+    )
     image = Base64ImageField(required=False)
     name = serializers.CharField(
         max_length=MAX_STRING_CHAR,
@@ -187,10 +189,10 @@ class RecipeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = (
-            'id', 'ingredients', 'tags',
-            'image', 'name', 'text', 'cooking_time'
+            'id', 'ingredients', 'tags', 'author',
+            'image', 'name', 'text', 'cooking_time',
         )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'author',)
 
     def validate_ingredients(self, ingredients):
         for ingredient_data in ingredients:
@@ -236,7 +238,6 @@ class RecipeSerializer(serializers.ModelSerializer):
         tags_data = validated_data.pop('tags', None)
         if instance is None:
             instance = Recipe.objects.create(
-                author=self.context['request'].user,
                 **validated_data
             )
         else:
@@ -259,6 +260,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         return instance
 
     def create(self, validated_data):
+        validated_data['author'] = self.context['request'].user
         return self.create_or_update(
             validated_data=validated_data
         )
