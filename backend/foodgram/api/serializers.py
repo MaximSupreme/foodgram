@@ -272,29 +272,22 @@ class RecipeSerializer(serializers.ModelSerializer):
         return tags
 
     def create_or_update(self, instance=None, validated_data=None):
-        ingredients_data = validated_data.pop('ingredients', None)
-        tags_data = validated_data.pop('tags', None)
+        ingredients_data = validated_data.pop('ingredients', [])
+        tags_data = validated_data.pop('tags', [])
         if instance is None:
-            instance = Recipe.objects.create(
-                **validated_data
-            )
+            instance = super().create(validated_data)
         else:
             instance.recipeingredient_set.all().delete()
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
-            instance.save()
-        if ingredients_data is not None:
-            recipe_ingredients = [
-                RecipeIngredient(
-                    recipe=instance,
-                    ingredient_id=ingredient_data['id'],
-                    amount=ingredient_data['amount']
-                )
-                for ingredient_data in ingredients_data
-            ]
-            RecipeIngredient.objects.bulk_create(recipe_ingredients)
-        if tags_data is not None:
-            instance.tags.set(tags_data)
+            instance = super().update(instance, validated_data)
+        RecipeIngredient.objects.bulk_create([
+            RecipeIngredient(
+                recipe=instance,
+                ingredient_id=ingredient['id'],
+                amount=ingredient['amount']
+            )
+            for ingredient in ingredients_data
+        ])
+        instance.tags.set(tags_data)
         return instance
 
     def create(self, validated_data):
@@ -326,32 +319,23 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id']
 
-    def validate(self, data):
-        if 'ingredients' not in data and self.context['request'].method in ['POST', 'PUT', 'PATCH']:
-            raise serializers.ValidationError({
-                'ingredients': ['This field is required.']
-            })
-        return data
-
     def validate_ingredients(self, value):
         if not value:
+            raise serializers.ValidationError('At least there must be one ingredient.')
+        ingredient_ids = [ingredient['id'] for ingredient in value]
+        if len(ingredient_ids) != len(set(ingredient_ids)):
+            duplicates = [id for id in ingredient_ids if ingredient_ids.count(id) > 1]
             raise serializers.ValidationError(
-                'At least there must be one ingredient.'
+                f'Duplicate ingredient IDs found: {list(set(duplicates))}'
             )
         for ingredient in value:
-            if 'id' not in ingredient or 'amount' not in ingredient:
+            if not Ingredient.objects.filter(id=ingredient['id']).exists():
                 raise serializers.ValidationError(
-                    'Each ingredient must contain "id" and "amount".'
+                    f'Ingredient with id {ingredient['id']} does not exist.'
                 )
-            if not isinstance(ingredient['id'], int):
+            if ingredient['amount'] <= 0:
                 raise serializers.ValidationError(
-                    'Ingredient ID must be an integer.'
-                )
-            if not isinstance(
-                ingredient['amount'], int
-            ) or ingredient['amount'] <= 0:
-                raise serializers.ValidationError(
-                    'The quantity must be a positive integer.'
+                    'Amount must be positive.'
                 )
         return value
 
@@ -388,22 +372,27 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         if 'ingredients' not in validated_data:
             raise serializers.ValidationError({
-                'ingredients': ['This field is required when updating.']
+            'ingredients': ['This field is required when updating.']
             })
+        if 'tags' not in validated_data:
+            raise serializers.ValidationError({
+            'tags': ['This field is required when updating.']
+            })
+        instance.recipeingredient_set.all().delete()
         ingredients_data = validated_data.pop('ingredients')
         tags_data = validated_data.pop('tags', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        instance.recipeingredient_set.all().delete()
-        RecipeIngredient.objects.bulk_create([
+        recipe_ingredients = [
             RecipeIngredient(
                 recipe=instance,
                 ingredient_id=ingredient['id'],
                 amount=ingredient['amount']
             )
             for ingredient in ingredients_data
-        ])
+        ]
+        RecipeIngredient.objects.bulk_create(recipe_ingredients)
         if tags_data is not None:
             instance.tags.set(tags_data)
         return instance

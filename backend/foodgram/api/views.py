@@ -31,7 +31,7 @@ CustomUser = get_user_model()
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = [permissions.AllowAny,]
+    permission_classes = [permissions.IsAuthenticated,]
     pagination_class = LimitOffsetPagination
 
     def get_permissions(self):
@@ -61,6 +61,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         url_path='me',
     )
     def me(self, request):
+        if not request.user.is_authenticated:
+            return Response(
+                {'detail': 'Credentials were not provided'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         if request.method == 'GET':
             serializer = self.get_serializer(request.user)
             return Response(serializer.data)
@@ -188,7 +193,7 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated]
     )
     def favorite(self, request, pk=None):
-        return self.add_or_remove_recipe(request, pk=pk, list_name='favorites')
+        return self.add_or_remove_recipe(request, pk=pk, list_name='favorite')
 
     @action(
         detail=True, methods=['post', 'delete'],
@@ -196,7 +201,7 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     )
     def shopping_cart(self, request, pk=None):
         return self.add_or_remove_recipe(
-            request, pk=pk, list_name='shopping_cart'
+            request, pk=pk, list_name='user_shopping_cart'
         )
 
     @action(
