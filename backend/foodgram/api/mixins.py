@@ -10,7 +10,7 @@ class AddDeleteRecipeMixin:
 
     def add_or_remove_recipe(self, request, pk=None, list_name=None):
         recipe = self.get_object()
-        user = request.user()
+        user = request.user
         list_queryset = self._get_list_queryset(user, list_name)
         item_exists = list_queryset.filter(recipe=recipe).exists()
         if request.method == 'POST':

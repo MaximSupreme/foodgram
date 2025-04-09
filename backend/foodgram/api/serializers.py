@@ -42,7 +42,7 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = (
-            'username', 'email', 'password',
+            'id', 'username', 'email', 'password',
             'first_name', 'last_name'
         )
         extra_kwargs = {
@@ -78,6 +78,23 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         return data
 
 
+class CustomUserUpdateSerializer(serializers.ModelSerializer):
+    avatar = serializers.ImageField(
+        required=False, allow_null=True
+    )
+
+    class Meta:
+        model = CustomUser
+        fields = (
+            'email', 'username', 'first_name',
+            'last_name', 'avatar',
+        )
+        extra_kwargs = {
+            'email': {'required': False},
+            'username': {'required': False},
+        }
+
+
 class SetAvatarSerializer(serializers.Serializer):
     avatar = serializers.CharField()
 
@@ -110,7 +127,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class IngredientInRecipeSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField(source='ingredient.id')
+    id = serializers.IntegerField()
     name = serializers.ReadOnlyField(source='ingredient.name')
     measurement_unit = serializers.ReadOnlyField(
         source='ingredient.measurement_unit'
@@ -132,12 +149,28 @@ class RecipeMinifiedSerializer(serializers.ModelSerializer):
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
-    ingredient = IngredientSerializer(read_only=True)
-    amount = serializers.IntegerField()
+    id = serializers.IntegerField(
+        source='ingredient.id'
+    )
+    name = serializers.CharField(
+        source='ingredient.name'
+    )
+    measurement_unit = serializers.CharField(
+        source='ingredient.measurement_unit'
+    )
 
     class Meta:
         model = RecipeIngredient
-        fields = ('ingredient', 'amount')
+        fields = ('id', 'name', 'measurement_unit', 'amount',)
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return {
+            'id': representation['id'],
+            'name': representation['name'],
+            'measurement_unit': representation['measurement_unit'],
+            'amount': representation['amount'],
+        }
 
 
 class RecipeListSerializer(serializers.ModelSerializer):
@@ -274,3 +307,103 @@ class RecipeSerializer(serializers.ModelSerializer):
         return self.create_or_update(
             instance=instance, validated_data=validated_data
         )
+
+
+class RecipeCreateSerializer(serializers.ModelSerializer):
+    image = Base64ImageField(required=True)
+    ingredients = IngredientInRecipeSerializer(many=True)
+    tags = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=True
+    )
+
+    class Meta:
+        model = Recipe
+        fields = [
+            'id', 'name', 'text', 'cooking_time',
+            'ingredients', 'tags', 'image'
+        ]
+        read_only_fields = ['id']
+
+    def validate(self, data):
+        if 'ingredients' not in data and self.context['request'].method in ['POST', 'PUT', 'PATCH']:
+            raise serializers.ValidationError({
+                'ingredients': ['This field is required.']
+            })
+        return data
+
+    def validate_ingredients(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'At least there must be one ingredient.'
+            )
+        for ingredient in value:
+            if 'id' not in ingredient or 'amount' not in ingredient:
+                raise serializers.ValidationError(
+                    'Each ingredient must contain "id" and "amount".'
+                )
+            if not isinstance(ingredient['id'], int):
+                raise serializers.ValidationError(
+                    'Ingredient ID must be an integer.'
+                )
+            if not isinstance(
+                ingredient['amount'], int
+            ) or ingredient['amount'] <= 0:
+                raise serializers.ValidationError(
+                    'The quantity must be a positive integer.'
+                )
+        return value
+
+    def validate_tags(self, tags):
+        if not tags:
+            raise serializers.ValidationError('At least there must be one tag.')
+        try:
+            tag_ids = [int(tag_id) for tag_id in tags]
+        except (ValueError, TypeError):
+            raise serializers.ValidationError('Tag ID must be an integer.')
+        if len(tag_ids) != len(set(tag_ids)):
+            duplicate_ids = [tag_id for tag_id in tag_ids if tag_ids.count(tag_id) > 1]
+            raise serializers.ValidationError(
+                f'Duplicate tag IDs found: {list(set(duplicate_ids))}'
+            )
+        existing_tags_count = Tag.objects.filter(id__in=tag_ids).count()
+        if existing_tags_count != len(tag_ids):
+            raise serializers.ValidationError('Some tags do not exist.')
+        return tag_ids
+
+    def create(self, validated_data):
+        tags_data = validated_data.pop('tags')
+        ingredients_data = validated_data.pop('ingredients')
+        recipe = Recipe.objects.create(**validated_data)
+        recipe.tags.set(tags_data)
+        for ingredient_data in ingredients_data:
+            RecipeIngredient.objects.create(
+                recipe=recipe,
+                ingredient_id=ingredient_data['id'],
+                amount=ingredient_data['amount']
+            )
+        return recipe
+
+    def update(self, instance, validated_data):
+        if 'ingredients' not in validated_data:
+            raise serializers.ValidationError({
+                'ingredients': ['This field is required when updating.']
+            })
+        ingredients_data = validated_data.pop('ingredients')
+        tags_data = validated_data.pop('tags', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        instance.recipeingredient_set.all().delete()
+        RecipeIngredient.objects.bulk_create([
+            RecipeIngredient(
+                recipe=instance,
+                ingredient_id=ingredient['id'],
+                amount=ingredient['amount']
+            )
+            for ingredient in ingredients_data
+        ])
+        if tags_data is not None:
+            instance.tags.set(tags_data)
+        return instance

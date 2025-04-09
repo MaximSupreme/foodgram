@@ -8,11 +8,12 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import filters, permissions, status, viewsets, exceptions
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 
+from .paginators import RecipePagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
 from .models import Ingredient, Recipe, Tag
@@ -21,6 +22,7 @@ from .serializers import (
     IngredientSerializer, RecipeListSerializer, TagSerializer,
     CustomUserSerializer, SetAvatarResponseSerializer,
     SetAvatarSerializer, RecipeSerializer, CustomUserCreateSerializer,
+    CustomUserUpdateSerializer, RecipeCreateSerializer
 )
 
 CustomUser = get_user_model()
@@ -32,6 +34,13 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny,]
     pagination_class = LimitOffsetPagination
 
+    def get_permissions(self):
+        if self.action in (
+            'me', 'avatar', 'subscribe', 'subscriptions'
+        ):
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
+
     def create(self, request, *args, **kwargs):
         serializer = CustomUserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -42,21 +51,32 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             'username': user.username,
             'first_name': user.first_name,
             'last_name': user.last_name,
+            'is_subscribed': False,
+            'avatar': user.avatar.url if user.avatar else None,
         }
-
         return Response(response_data, status=status.HTTP_201_CREATED)
 
     @action(
-        detail=False, methods=['get'], url_path='me',
-        permission_classes=[permissions.IsAuthenticated]
+        detail=False, methods=['get', 'put', 'patch'],
+        url_path='me',
     )
     def me(self, request):
-        serializer = self.get_serializer(request.user, context={'request': request})
-        return Response(serializer.data)
+        if request.method == 'GET':
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data)
+        serializer = CustomUserUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=request.method == 'PATCH',
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(
-        detail=False, methods=['put', 'delete'], url_path='me/avatar',
-        permission_classes=[permissions.IsAuthenticated]
+        detail=False, methods=['put', 'delete'],
+        url_path='me/avatar',
     )
     def avatar(self, request):
         user = request.user
@@ -75,7 +95,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             return Response(
                 SetAvatarResponseSerializer(
                     {'avatar': user.avatar.url}
-                ).data
+                ).data,
+                status=status.HTTP_200_OK
             )
         user.avatar.delete() if user.avatar else None
         user.save()
@@ -104,6 +125,7 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly
     ]
+    pagination_class = RecipePagination
     filter_backends = [
         DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter
     ]
@@ -112,20 +134,53 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     ordering_fields = ['name', 'cooking_time']
 
     def get_serializer_class(self):
-        if self.action == 'create' or self.action == 'update' or self.action == 'partial_update':
-            return RecipeSerializer
+        if self.action in ['create', 'update', 'partial_update']:
+            return RecipeCreateSerializer
         return RecipeListSerializer
 
-    def perform_create(self, serializer):
-        serializer.save()
+    def create(self, request, *args, **kwargs):
+        if 'image' not in request.data:
+            return Response(
+                {'image': ['This field is required!']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            self.perform_create(serializer)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         recipe = serializer.instance
-        list_serializer = RecipeListSerializer(recipe, context=self.get_serializer_context())
+        list_serializer = RecipeListSerializer(
+            recipe, context=self.get_serializer_context()
+        )
         return Response(list_serializer.data, status=status.HTTP_201_CREATED)
 
-    def perform_update(self, serializer):
-        serializer.save()
+    def perform_create(self, serializer):
+        recipe = serializer.save(author=self.request.user)
+        ingredients = self.request.data.get('ingredients', [])
+        for ingredient in ingredients:
+            recipe.ingredients.add(
+                ingredient['id'],
+                through_defaults={'amount': ingredient['amount']}
+            )
+        tags = self.request.data.get('tags', [])
+        recipe.tags.set(tags)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance, data=request.data, partial=kwargs.pop('partial', False)
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
         recipe = serializer.instance
-        list_serializer = RecipeListSerializer(recipe, context=self.get_serializer_context())
+        list_serializer = RecipeListSerializer(
+            recipe, context=self.get_serializer_context()
+        )
         return Response(list_serializer.data, status=status.HTTP_200_OK)
 
     @action(
@@ -146,18 +201,20 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
 
     @action(
         detail=True, methods=['get'],
-        permission_classes=[permissions.AllowAny]
+        permission_classes=[permissions.AllowAny],
+        url_path='get_link', url_name='get-link',
     )
     def get_link(self, request, pk=None):
         recipe = self.get_object()
         salt = settings.SECRET_KEY
-        text = f'{recipe.id}{salt}'
-        hashed_text = hashlib.sha256(text.encode('utf-8')).digest()
-        base64_encoded = base64.urlsafe_b64encode(hashed_text).decode('utf-8')
-        shortened_hash = base64_encoded[:8]
-        base_url = request.build_absolute_url('/')
-        short_link = f'{base_url}s/{shortened_hash}'
-        return Response({'short_link': short_link})
+        unique_str = f"{recipe.id}-{salt}"
+        hash_bytes = hashlib.sha256(unique_str.encode()).digest()
+        short_code = base64.urlsafe_b64encode(hash_bytes).decode()[:8]
+        full_url = request.build_absolute_uri('/')[:-1]
+        short_url = f"{full_url}/s/{short_code}"
+        return Response({
+            'short_link': short_url
+        }, status=status.HTTP_200_OK)
 
 
 class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -230,9 +287,9 @@ def download_shopping_cart(request):
     shopping_list = "Shopping List:\n\n"
     for ingredient in ingredients:
         shopping_list += (
-            f"- {ingredient['recipeingredient__ingredient__name']} - "
-            f"{ingredient['total_amount']} "
-            f"{ingredient['recipeingredient__ingredient__measurement_unit']}\n"
+            f'- {ingredient['recipeingredient__ingredient__name']} - '
+            f'{ingredient['total_amount']} '
+            f'{ingredient['recipeingredient__ingredient__measurement_unit']}\n'
         )
     response = HttpResponse(shopping_list, content_type='text/plain')
     response[

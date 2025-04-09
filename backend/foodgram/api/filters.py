@@ -21,7 +21,9 @@ class RecipeFilter(django_filters.FilterSet):
     )
     author = django_filters.NumberFilter(field_name='author')
     tags = django_filters.ModelMultipleChoiceFilter(
-        field_name='tags', queryset=Tag.objects.all()
+        field_name='tags__slug',
+        to_field_name='slug',
+        queryset=Tag.objects.all()
     )
 
     class Meta:
