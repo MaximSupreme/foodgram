@@ -3,8 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     IngredientViewSet, RecipeViewSet,
-    TagViewSet, download_shopping_cart,
-    SubscriptionViewSet, CustomUserViewSet,
+    TagViewSet, SubscriptionViewSet, CustomUserViewSet,
 )
 
 router = DefaultRouter()
@@ -33,9 +32,5 @@ urlpatterns = [
     ),
     path(
         '', include(router.urls)
-    ),
-    path(
-        'recipes/download_shopping_cart/',
-        download_shopping_cart, name='download_shopping_cart',
     ),
 ]

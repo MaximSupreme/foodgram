@@ -2,7 +2,6 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.text import slugify
-from django.conf import settings
 
 from .constants import MAX_STR_AND_SLUG_CHAR, MAX_STRING_CHAR
 
@@ -31,14 +30,14 @@ class CustomUser(AbstractUser):
 
 class Subscription(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name='subscriptions',
+        CustomUser,
+        related_name='subscriber',
         on_delete=models.CASCADE,
         verbose_name='Подписчик'
     )
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name='subscribers',
+        CustomUser,
+        related_name='subscribing',
         on_delete=models.CASCADE,
         verbose_name='Автор'
     )
@@ -215,12 +214,12 @@ class ShoppingCart(models.Model):
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
-        related_name='user_shopping_cart'
+        related_name='shopping_cart'
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='recipe_for_shopping_cart'
+        related_name='in_shopping_cart'
     )
 
     class Meta:
@@ -238,12 +237,12 @@ class FavoriteRecipe(models.Model):
     user = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
-        related_name='favorite',
+        related_name='favorites',
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='favorite',
+        related_name='favorited_by',
     )
 
     class Meta:

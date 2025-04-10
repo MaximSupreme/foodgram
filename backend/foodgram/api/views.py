@@ -6,23 +6,22 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from django.db.models import Sum
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, permissions, status, viewsets, exceptions
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework import filters, permissions, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.pagination import PageNumberPagination
 
 from .paginators import RecipePagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
-from .models import Ingredient, Recipe, Tag
+from .models import Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeListSerializer, TagSerializer,
     CustomUserSerializer, SetAvatarResponseSerializer,
-    SetAvatarSerializer, RecipeSerializer, CustomUserCreateSerializer,
-    CustomUserUpdateSerializer, RecipeCreateSerializer
+    SetAvatarSerializer, CustomUserCreateSerializer,
+    CustomUserUpdateSerializer, RecipeCreateSerializer, SubscriptionSerializer,
 )
 
 CustomUser = get_user_model()
@@ -32,7 +31,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
     permission_classes = [permissions.IsAuthenticated,]
-    pagination_class = LimitOffsetPagination
+    pagination_class = PageNumberPagination
 
     def get_permissions(self):
         if self.action in (
@@ -106,6 +105,76 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         user.avatar.delete() if user.avatar else None
         user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+        detail=True, methods=['POST', 'DELETE'],
+        permission_classes=[permissions.IsAuthenticated]
+    )
+    def subscribe(self, request, pk=None):
+        author = self.get_object()
+        if request.method == 'DELETE':
+            subscription = Subscription.objects.filter(
+                user=request.user,
+                author=author
+            ).first()
+            if not subscription:
+                return Response(
+                    {'detail': 'You are not subscribed on this user.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            subscription.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        if Subscription.objects.filter(user=request.user, author=author).exists():
+            return Response(
+                {'detail': 'You are already subscribed to this user.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        subscription = Subscription.objects.create(user=request.user, author=author)
+        serializer = SubscriptionSerializer(
+            subscription,
+            context={
+                'request': request,
+                'recipes_limit': request.query_params.get('recipes_limit')
+            }
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=False, methods=['GET'],
+        permission_classes=[permissions.IsAuthenticated],
+        url_path='subscriptions'
+    )
+    def subscriptions(self, request):
+        if not Subscription.objects.filter(user=request.user).exists():
+            return Response(
+                {
+                    "count": 0,
+                    "next": None,
+                    "previous": None,
+                    "results": []
+                },
+                status=status.HTTP_200_OK
+            )
+        subscriptions = Subscription.objects.filter(user=request.user)
+        page = self.paginate_queryset(subscriptions)
+        if page is not None:
+            serializer = SubscriptionSerializer(
+                page, many=True,
+                context={
+                    'request': request,
+                    'recipes_limit': request.query_params.get('recipes_limit')
+                }
+            )
+            return self.get_paginated_response(serializer.data)
+        serializer = SubscriptionSerializer(
+            subscriptions,
+            many=True,
+            context={
+                'request': request,
+                'recipes_limit': request.query_params.get('recipes_limit')
+            }
+        )
+        return Response(serializer.data)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -189,20 +258,88 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         return Response(list_serializer.data, status=status.HTTP_200_OK)
 
     @action(
-        detail=True, methods=['post', 'delete'],
-        permission_classes=[permissions.IsAuthenticated]
-    )
+            detail=True, methods=['post', 'delete'],
+            permission_classes=[permissions.IsAuthenticated]
+        )
     def favorite(self, request, pk=None):
-        return self.add_or_remove_recipe(request, pk=pk, list_name='favorite')
+        recipe = self.get_object()
+        if request.method == 'POST':
+            if Favorite.objects.filter(user=request.user, recipe=recipe).exists():
+                return Response(
+                    {'errors': 'Recipe is already in favorites.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            Favorite.objects.create(user=request.user, recipe=recipe)
+            return Response(
+                {'id': recipe.id, 'name': recipe.name, 'image': recipe.image.url, 
+                'cooking_time': recipe.cooking_time},
+                status=status.HTTP_201_CREATED
+            )
+        if request.method == 'DELETE':
+            Favorite.objects.filter(user=request.user, recipe=recipe).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
-        detail=True, methods=['post', 'delete'],
-        permission_classes=[permissions.IsAuthenticated]
-    )
-    def shopping_cart(self, request, pk=None):
-        return self.add_or_remove_recipe(
-            request, pk=pk, list_name='user_shopping_cart'
+            detail=True, methods=['post', 'delete'],
+            permission_classes=[permissions.IsAuthenticated]
         )
+    def shopping_cart(self, request, pk=None):
+        recipe = self.get_object()
+        if request.method == 'POST':
+            if ShoppingCart.objects.filter(user=request.user, recipe=recipe).exists():
+                return Response(
+                    {'errors': 'Recipe is already in shopping list.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            ShoppingCart.objects.create(user=request.user, recipe=recipe)
+            return Response(
+                {'id': recipe.id, 'name': recipe.name, 'image': recipe.image.url, 
+                'cooking_time': recipe.cooking_time},
+                status=status.HTTP_201_CREATED
+            )
+        if request.method == 'DELETE':
+            ShoppingCart.objects.filter(user=request.user, recipe=recipe).delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(
+            detail=False, methods=['get'],
+            permission_classes=[permissions.IsAuthenticated]
+        )
+    def favorites(self, request):
+        favorites = FavoriteRecipe.objects.filter(user=request.user)
+        recipes = [fav.recipe for fav in favorites]
+        page = self.paginate_queryset(recipes)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
+    @action(
+            detail=False, methods=['get'],
+            permission_classes=[permissions.IsAuthenticated]
+        )
+    def shopping_list(self, request):
+        cart_items = ShoppingCart.objects.filter(user=request.user)
+        recipes = [item.recipe for item in cart_items]
+        page = self.paginate_queryset(recipes)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
+    @action(
+            detail=False, methods=['get'],
+            permission_classes=[permissions.IsAuthenticated]
+        )
+    def download_shopping_list(self, request):
+        cart_items = ShoppingCart.objects.filter(user=request.user)
+        ingredients = {}
+        for item in cart_items:
+            for ingredient in item.recipe.ingredients.all():
+                key = f"{ingredient.name} ({ingredient.measurement_unit})"
+                ingredients[key] = ingredients.get(key, 0) + ingredient.amount
+        content = "Список покупок:\n\n"
+        for name, amount in sorted(ingredients.items()):
+            content += f"{name} — {amount}\n"
+        response = HttpResponse(content, content_type='text/plain')
+        response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+        return response
 
     @action(
         detail=True, methods=['get'],
@@ -276,28 +413,3 @@ class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
             )
         request.user.subscriptions.remove(user_to_subscribe)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-@api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
-def download_shopping_cart(request):
-    print(f'User in download_cart {request.user}')
-    user = request.user
-    ingredients = user.shopping_cart.all().values(
-        'recipeingredient__ingredient__name',
-        'recipeingredient__ingredient__measurement_unit'
-    ).annotate(
-        total_amount=Sum('recipeingredient__amount')
-    ).order_by()
-    shopping_list = "Shopping List:\n\n"
-    for ingredient in ingredients:
-        shopping_list += (
-            f'- {ingredient['recipeingredient__ingredient__name']} - '
-            f'{ingredient['total_amount']} '
-            f'{ingredient['recipeingredient__ingredient__measurement_unit']}\n'
-        )
-    response = HttpResponse(shopping_list, content_type='text/plain')
-    response[
-        'Content-Disposition'
-    ] = 'attachment; filename="shopping_list.txt"'
-    return response

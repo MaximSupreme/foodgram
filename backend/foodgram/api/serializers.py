@@ -5,7 +5,10 @@ from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 
-from .models import Ingredient, Recipe, RecipeIngredient, Tag, Subscription, ShoppingCart
+from .models import (
+    Ingredient, Recipe, RecipeIngredient, Tag,
+    Subscription, ShoppingCart, FavoriteRecipe
+)
 from .constants import MAX_STRING_CHAR
 
 CustomUser = get_user_model()
@@ -93,6 +96,55 @@ class CustomUserUpdateSerializer(serializers.ModelSerializer):
             'email': {'required': False},
             'username': {'required': False},
         }
+
+
+class SubscriptionSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(source='author.id')
+    email = serializers.ReadOnlyField(source='author.email')
+    username = serializers.ReadOnlyField(source='author.username')
+    first_name = serializers.ReadOnlyField(source='author.first_name')
+    last_name = serializers.ReadOnlyField(source='author.last_name')
+    is_subscribed = serializers.SerializerMethodField()
+    recipes = serializers.SerializerMethodField()
+    recipes_count = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Subscription
+        fields = (
+            'id', 'email', 'username', 'first_name', 'avatar',
+            'last_name', 'is_subscribed', 'recipes', 'recipes_count'
+        )
+
+    def get_is_subscribed(self, obj):
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return Subscription.objects.filter(
+                user=request.user,
+                author=obj.author
+            ).exists()
+        return False
+
+    def get_recipes(self, obj):
+        from .serializers import RecipeMinifiedSerializer
+        recipes = obj.author.recipes.all()
+        recipes_limit = self.context.get('recipes_limit')
+        if recipes_limit:
+            recipes = recipes[:int(recipes_limit)]
+        return RecipeMinifiedSerializer(
+            recipes,
+            many=True,
+            context=self.context
+        ).data
+
+    def get_recipes_count(self, obj):
+        return obj.author.recipes.count()
+
+    def get_avatar(self, obj):
+        request = self.context.get('request')
+        if obj.author.avatar:
+            return request.build_absolute_url(obj.author.avatar.url)
+        return None
 
 
 class SetAvatarSerializer(serializers.Serializer):
@@ -199,9 +251,11 @@ class RecipeListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             if list_name == 'favorites':
-                return obj.favorite.filter(user=request.user).exists()
+                return obj.favorited_by.filter(user=request.user).exists()
             if list_name == 'shopping_cart':
-                return ShoppingCart.objects.filter(recipe=obj, user=request.user).exists()
+                return ShoppingCart.objects.filter(
+                    recipe=obj, user=request.user
+                ).exists()
         return False
 
     def get_is_favorited(self, obj):
@@ -321,7 +375,9 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def validate_ingredients(self, value):
         if not value:
-            raise serializers.ValidationError('At least there must be one ingredient.')
+            raise serializers.ValidationError(
+                'At least there must be one ingredient.'
+            )
         ingredient_ids = [ingredient['id'] for ingredient in value]
         if len(ingredient_ids) != len(set(ingredient_ids)):
             duplicates = [id for id in ingredient_ids if ingredient_ids.count(id) > 1]
@@ -341,13 +397,17 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def validate_tags(self, tags):
         if not tags:
-            raise serializers.ValidationError('At least there must be one tag.')
+            raise serializers.ValidationError(
+                'At least there must be one tag.'
+            )
         try:
             tag_ids = [int(tag_id) for tag_id in tags]
         except (ValueError, TypeError):
             raise serializers.ValidationError('Tag ID must be an integer.')
         if len(tag_ids) != len(set(tag_ids)):
-            duplicate_ids = [tag_id for tag_id in tag_ids if tag_ids.count(tag_id) > 1]
+            duplicate_ids = [
+                tag_id for tag_id in tag_ids if tag_ids.count(tag_id) > 1
+            ]
             raise serializers.ValidationError(
                 f'Duplicate tag IDs found: {list(set(duplicate_ids))}'
             )
@@ -396,3 +456,33 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         if tags_data is not None:
             instance.tags.set(tags_data)
         return instance
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FavoriteRecipe
+        fields = ('user', 'recipe')
+        read_only_fields = ('user',)
+
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShoppingCart
+        fields = ('user', 'recipe')
+        read_only_fields = ('user',)
+
+
+class ShoppingCartDownloadSerializer(serializers.Serializer):
+    ingredients = serializers.SerializerMethodField()
+
+    def get_ingredients(self, obj):
+        ingredients = {}
+        for recipe in obj.recipes.all():
+            for ingredient in recipe.ingredients.all():
+                key = f"{ingredient.name} ({ingredient.measurement_unit})"
+                if key in ingredients:
+                    ingredients[key] += ingredient.amount
+                else:
+                    ingredients[key] = ingredient.amount
+        
+        return [f"{name} — {amount}" for name, amount in ingredients.items()]

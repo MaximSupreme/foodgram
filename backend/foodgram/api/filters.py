@@ -1,7 +1,9 @@
 import django_filters
 from django_filters.rest_framework import CharFilter, FilterSet
 
-from .models import CustomUser, Recipe, Tag, FavoriteRecipe, Ingredient
+from .models import (
+    CustomUser, Recipe, Tag, FavoriteRecipe, Ingredient
+)
 
 
 class CustomUserFilter(FilterSet):
@@ -15,7 +17,9 @@ class CustomUserFilter(FilterSet):
 
 
 class RecipeFilter(django_filters.FilterSet):
-    is_favorited = django_filters.NumberFilter(method='filter_is_favorited')
+    is_favorited = django_filters.NumberFilter(
+        method='filter_is_favorited'
+    )
     is_in_shopping_cart = django_filters.NumberFilter(
         method='filter_is_in_shopping_cart'
     )
@@ -28,7 +32,9 @@ class RecipeFilter(django_filters.FilterSet):
 
     class Meta:
         model = Recipe
-        fields = ['author', 'tags', 'is_favorited', 'is_in_shopping_cart']
+        fields = [
+            'author', 'tags', 'is_favorited', 'is_in_shopping_cart'
+        ]
 
     def filter_is_favorited(self, queryset, name, value):
         user = self.request.user
