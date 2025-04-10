@@ -387,7 +387,7 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         for ingredient in value:
             if not Ingredient.objects.filter(id=ingredient['id']).exists():
                 raise serializers.ValidationError(
-                    f'Ingredient with id {ingredient['id']} does not exist.'
+                    f'Ingredient with id {ingredient["id"]} does not exist.'
                 )
             if ingredient['amount'] <= 0:
                 raise serializers.ValidationError(
