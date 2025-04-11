@@ -14,7 +14,9 @@ from rest_framework.pagination import PageNumberPagination
 from .paginators import RecipePagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
-from .models import Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart
+from .models import (
+    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart
+)
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeListSerializer, TagSerializer,
@@ -260,7 +262,7 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                     'id': recipe.id, 'name': recipe.name,
                     'image': recipe.image.url,
                     'cooking_time': recipe.cooking_time
-                },status=status.HTTP_201_CREATED
+                }, status=status.HTTP_201_CREATED
             )
         if request.method == 'DELETE':
             FavoriteRecipe.objects.filter(
@@ -288,7 +290,7 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                     'id': recipe.id, 'name': recipe.name,
                     'image': recipe.image.url,
                     'cooking_time': recipe.cooking_time
-                },status=status.HTTP_201_CREATED
+                }, status=status.HTTP_201_CREATED
             )
         if request.method == 'DELETE':
             ShoppingCart.objects.filter(
