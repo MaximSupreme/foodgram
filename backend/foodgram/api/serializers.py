@@ -387,7 +387,9 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             )
         ingredient_ids = [ingredient['id'] for ingredient in value]
         if len(ingredient_ids) != len(set(ingredient_ids)):
-            duplicates = [id for id in ingredient_ids if ingredient_ids.count(id) > 1]
+            duplicates = [
+                id for id in ingredient_ids if ingredient_ids.count(id) > 1
+            ]
             raise serializers.ValidationError(
                 f'Duplicate ingredient IDs found: {list(set(duplicates))}'
             )
@@ -438,13 +440,13 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         if 'ingredients' not in validated_data:
-            raise serializers.ValidationError({
-            'ingredients': ['This field is required when updating.']
-            })
+            raise serializers.ValidationError(
+                {'ingredients': ['This field is required when updating.']}
+            )
         if 'tags' not in validated_data:
-            raise serializers.ValidationError({
-            'tags': ['This field is required when updating.']
-            })
+            raise serializers.ValidationError(
+                {'tags': ['This field is required when updating.']}
+            )
         instance.recipeingredient_set.all().delete()
         ingredients_data = validated_data.pop('ingredients')
         tags_data = validated_data.pop('tags', None)

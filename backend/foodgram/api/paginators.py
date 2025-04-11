@@ -11,7 +11,7 @@ class RecipePagination(PageNumberPagination):
     page_size = 6
     page_size_query_param = 'limit'
     max_page_size = 100
-    
+
     def get_paginated_response(self, data):
         return Response({
             'count': self.page.paginator.count,
