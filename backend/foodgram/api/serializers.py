@@ -1,9 +1,11 @@
 import re
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+from rest_framework.exceptions import NotAuthenticated
 
 from .models import (
     Ingredient, Recipe, RecipeIngredient, Tag,
@@ -31,14 +33,19 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
     def get_is_subscribed(self, obj):
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Subscription.objects.filter(
-                user=request.user, author=obj
-            ).exists()
-        return False
+        return request.user.is_authenticated and Subscription.objects.filter(
+            user=request.user, author=obj
+        ).exists()
 
     def get_avatar(self, obj):
         return obj.avatar.url if obj.avatar else None
+
+    def to_representation(self, instance):
+        if isinstance(instance, AnonymousUser):
+            raise NotAuthenticated(
+                detail='Authentication credentials were not provided.'
+            )
+        return super().to_representation(instance)
 
 
 class CustomUserCreateSerializer(serializers.ModelSerializer):
@@ -127,7 +134,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
 
     def get_recipes(self, obj):
         from .serializers import RecipeMinifiedSerializer
-        recipes = obj.author.recipes.all()
+        recipes = obj.user.recipes.all()
         recipes_limit = self.context.get('recipes_limit')
         if recipes_limit:
             recipes = recipes[:int(recipes_limit)]
@@ -138,12 +145,12 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         ).data
 
     def get_recipes_count(self, obj):
-        return obj.author.recipes.count()
+        return obj.user.recipes.count()
 
     def get_avatar(self, obj):
         request = self.context.get('request')
-        if obj.author.avatar:
-            return request.build_absolute_url(obj.author.avatar.url)
+        if obj.user.avatar:
+            return request.build_absolute_url(obj.user.avatar.url)
         return None
 
 

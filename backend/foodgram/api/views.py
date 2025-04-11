@@ -139,42 +139,22 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(
-        detail=False, methods=['GET'],
-        permission_classes=[permissions.IsAuthenticated],
-        url_path='subscriptions'
-    )
+    @action(detail=False, methods=['GET'],)
     def subscriptions(self, request):
-        if not Subscription.objects.filter(user=request.user).exists():
-            return Response(
-                {
-                    "count": 0,
-                    "next": None,
-                    "previous": None,
-                    "results": []
-                },
-                status=status.HTTP_200_OK
-            )
-        subscriptions = Subscription.objects.filter(user=request.user)
-        page = self.paginate_queryset(subscriptions)
+        queryset = CustomUser.objects.filter(subscriber__user=request.user)
+        paginator = PageNumberPagination()
+        page = paginator.paginate_queryset(queryset, request)
         if page is not None:
             serializer = SubscriptionSerializer(
                 page, many=True,
-                context={
-                    'request': request,
-                    'recipes_limit': request.query_params.get('recipes_limit')
-                }
+                context={'request': request}
             )
-            return self.get_paginated_response(serializer.data)
+            return paginator.get_paginated_response(serializer.data)
         serializer = SubscriptionSerializer(
-            subscriptions,
-            many=True,
-            context={
-                'request': request,
-                'recipes_limit': request.query_params.get('recipes_limit')
-            }
+            queryset, many=True,
+            context={'request', request}
         )
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
@@ -264,19 +244,19 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     def favorite(self, request, pk=None):
         recipe = self.get_object()
         if request.method == 'POST':
-            if Favorite.objects.filter(user=request.user, recipe=recipe).exists():
+            if FavoriteRecipe.objects.filter(user=request.user, recipe=recipe).exists():
                 return Response(
                     {'errors': 'Recipe is already in favorites.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            Favorite.objects.create(user=request.user, recipe=recipe)
+            FavoriteRecipe.objects.create(user=request.user, recipe=recipe)
             return Response(
                 {'id': recipe.id, 'name': recipe.name, 'image': recipe.image.url, 
                 'cooking_time': recipe.cooking_time},
                 status=status.HTTP_201_CREATED
             )
         if request.method == 'DELETE':
-            Favorite.objects.filter(user=request.user, recipe=recipe).delete()
+            FavoriteRecipe.objects.filter(user=request.user, recipe=recipe).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -357,59 +337,3 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         return Response({
             'short_link': short_url
         }, status=status.HTTP_200_OK)
-
-
-class SubscriptionViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = CustomUserSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        print(f'User in SubscriptionViewSet: {self.request.user}')
-        return CustomUser.objects.filter(subscribers=self.request.user)
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
-        if page is None:
-            serializer = self.get_serializer(
-                page, many=True, context={'request': request}
-            )
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(
-            queryset, many=True, context={'request': request}
-        )
-        return Response(serializer.data)
-
-    @action(
-        detail=True, methods=['post', 'delete'],
-        permission_classes=[permissions.IsAuthenticated]
-    )
-    def subscribe(self, request, pk=None):
-        user_to_subscribe = get_object_or_404(CustomUser, pk=pk)
-        is_subscribed = request.user.subscriptions.filter(
-            author=user_to_subscribe
-        ).exists()
-        if request.method == 'POST':
-            if request.user == user_to_subscribe:
-                return Response(
-                    {'detail': 'Cannot subscribe to yourself.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            if is_subscribed:
-                return Response(
-                    {'detail': 'Already subscribed.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            request.user.subscriptions.add(user_to_subscribe)
-            return Response(
-                CustomUserSerializer(
-                    user_to_subscribe, context={'request': request}
-                ).data, status=status.HTTP_201_CREATED
-            )
-        if not is_subscribed:
-            return Response(
-                {'detail': 'Not subscribed.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        request.user.subscriptions.remove(user_to_subscribe)
-        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -27,6 +27,18 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
+    @property
+    def subscriptions(self):
+        return CustomUser.objects.filter(
+            subscribed_to__user=self
+        )
+
+    @property
+    def subscribers(self):
+        return CustomUser.objects.filter(
+            subscriptions__author=self
+        )
+
 
 class Subscription(models.Model):
     user = models.ForeignKey(
@@ -152,7 +164,7 @@ class Recipe(models.Model):
 
     @property
     def total_favorites(self):
-        return self.favorite.count()
+        return self.favorited_by.count()
 
 
 class RecipeIngredient(models.Model):
