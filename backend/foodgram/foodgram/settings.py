@@ -155,6 +155,12 @@ DJOSER = {
     },
 }
 
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:9090",
+    "https://superfoodgram.ddns.net",
+    "http://superfoodgram.ddns.net"
+]
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGGING = {
