@@ -256,10 +256,11 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                 )
             FavoriteRecipe.objects.create(user=request.user, recipe=recipe)
             return Response(
-                {'id': recipe.id, 'name': recipe.name,
-                'image': recipe.image.url,
-                'cooking_time': recipe.cooking_time},
-                status=status.HTTP_201_CREATED
+                {
+                    'id': recipe.id, 'name': recipe.name,
+                    'image': recipe.image.url,
+                    'cooking_time': recipe.cooking_time
+                },status=status.HTTP_201_CREATED
             )
         if request.method == 'DELETE':
             FavoriteRecipe.objects.filter(
@@ -283,10 +284,11 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                 )
             ShoppingCart.objects.create(user=request.user, recipe=recipe)
             return Response(
-                {'id': recipe.id, 'name': recipe.name,
-                'image': recipe.image.url,
-                'cooking_time': recipe.cooking_time},
-                status=status.HTTP_201_CREATED
+                {
+                    'id': recipe.id, 'name': recipe.name,
+                    'image': recipe.image.url,
+                    'cooking_time': recipe.cooking_time
+                },status=status.HTTP_201_CREATED
             )
         if request.method == 'DELETE':
             ShoppingCart.objects.filter(
