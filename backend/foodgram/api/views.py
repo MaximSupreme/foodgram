@@ -5,7 +5,6 @@ from drf_base64.fields import Base64ImageField
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -62,7 +61,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         if not request.user.is_authenticated:
             return Response(
-                {'detail': 'Credentials were not provided'},
+                {'detail': 'Credentials were not provided.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
         if request.method == 'GET':
@@ -304,9 +303,12 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         return self.get_paginated_response(serializer.data)
 
     @action(
-            detail=False, methods=['get'],
-            permission_classes=[permissions.IsAuthenticated]
-        )
+        detail=False,
+        methods=['get'],
+        permission_classes=[permissions.IsAuthenticated],
+        url_path='download_shopping_cart',
+        url_name='download_shopping_cart'
+    )
     def download_shopping_list(self, request):
         cart_items = ShoppingCart.objects.filter(user=request.user)
         ingredients = {}
@@ -324,7 +326,7 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     @action(
         detail=True, methods=['get'],
         permission_classes=[permissions.AllowAny],
-        url_path='get_link', url_name='get-link',
+        url_path='get-link', url_name='get-link',
     )
     def get_link(self, request, pk=None):
         recipe = self.get_object()
@@ -334,6 +336,6 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         short_code = base64.urlsafe_b64encode(hash_bytes).decode()[:8]
         full_url = request.build_absolute_uri('/')[:-1]
         short_url = f"{full_url}/s/{short_code}"
-        return Response({
-            'short_link': short_url
-        }, status=status.HTTP_200_OK)
+        return Response(
+            {'short-link': short_url}, status=status.HTTP_200_OK
+        )

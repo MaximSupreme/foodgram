@@ -163,7 +163,7 @@ class SetAvatarSerializer(serializers.Serializer):
         except serializers.ValidationError as e:
             raise e
         except Exception as e:
-            raise serializers.ValidationError(f"Invalid image {e}")
+            raise serializers.ValidationError(f'Invalid image {e}')
         return value
 
 
@@ -491,5 +491,4 @@ class ShoppingCartDownloadSerializer(serializers.Serializer):
                     ingredients[key] += ingredient.amount
                 else:
                     ingredients[key] = ingredient.amount
-        
         return [f"{name} — {amount}" for name, amount in ingredients.items()]
