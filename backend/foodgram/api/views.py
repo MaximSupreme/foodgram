@@ -48,7 +48,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         url_path='me',
     )
     def me(self, request):
-        if not request.user.is_authenticated or isinstance(request.user, AnonymousUser):
+        if not isinstance(request.user, AnonymousUser):
             return Response(
                 {'detail': 'Authentication credentials were not provided.'},
                 status=status.HTTP_401_UNAUTHORIZED
