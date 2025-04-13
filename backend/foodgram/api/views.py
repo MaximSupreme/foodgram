@@ -217,9 +217,14 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                     'cooking_time': recipe.cooking_time
                 }, status=status.HTTP_201_CREATED
             )
-        FavoriteRecipe.objects.filter(
+        deleted_count, _ = FavoriteRecipe.objects.filter(
             user=request.user, recipe=recipe
         ).delete()
+        if deleted_count == 0:
+            return Response(
+                {'errors': 'Recipe was not in favorite.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
@@ -248,11 +253,15 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                     'cooking_time': recipe.cooking_time
                 }, status=status.HTTP_201_CREATED
             )
-        if request.method == 'DELETE':
-            ShoppingCart.objects.filter(
-                user=request.user, recipe=recipe
-            ).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+        deleted_count, _ = ShoppingCart.objects.filter(
+            user=request.user, recipe=recipe
+        ).delete()
+        if deleted_count == 0:
+            return Response(
+                {'errors': 'Recipe was not in shopping cart.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=False, methods=['get'],
