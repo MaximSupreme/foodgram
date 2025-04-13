@@ -25,9 +25,9 @@ urlpatterns = [
         '', include('djoser.urls')
     ),
     path(
-        'auth/', include('djoser.urls.authtoken'),
+        '', include(router.urls)
     ),
     path(
-        '', include(router.urls)
+        'auth/', include('djoser.urls.authtoken'),
     ),
 ]

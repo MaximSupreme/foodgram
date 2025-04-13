@@ -268,8 +268,11 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated]
     )
     def favorites(self, request):
-        favorites = FavoriteRecipe.objects.filter(user=request.user)
-        recipes = [fav.recipe for fav in favorites]
+        recipes = Recipe.objects.filter(
+            favorited_by__user=request.user
+        ).select_related('author').prefetch_related(
+            'tags', 'recipeingredient_set'
+        )
         page = self.paginate_queryset(recipes)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
@@ -279,8 +282,11 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated]
     )
     def shopping_list(self, request):
-        cart_items = ShoppingCart.objects.filter(user=request.user)
-        recipes = [item.recipe for item in cart_items]
+        recipes = Recipe.objects.filter(
+            shopping_carts__user=request.user
+        ).select_related('author').prefetch_related(
+            'tags', 'recipeingredient_set__ingredient'
+        )
         page = self.paginate_queryset(recipes)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
