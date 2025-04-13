@@ -58,7 +58,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 return Response(serializer.data)
             except AttributeError as e:
                 return Response(
-                    {'detail': 'Failed to serialize user data', 'error': str(e)},
+                    {
+                        'detail': 'Failed to serialize user data', 'error': str(e)
+                    },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
         serializer = CustomUserUpdateSerializer(
@@ -118,13 +120,11 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 author=author
             ).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        
         if subscription_exists:
             return Response(
                 {'detail': 'You are already subscribed to this user.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
         subscription = Subscription.objects.create(
             user=request.user, 
             author=author
@@ -175,11 +175,14 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
     permission_classes = [
-        permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly
+        permissions.IsAuthenticatedOrReadOnly,
+        IsAuthorOrReadOnly
     ]
     pagination_class = RecipePagination
     filter_backends = [
-        DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter
     ]
     filterset_class = RecipeFilter
     search_fields = ['name', 'text']
@@ -189,11 +192,6 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update']:
             return RecipeSerializer
         return RecipeListSerializer
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['request'] = self.request
-        return context
 
     @action(
         detail=True, methods=['post', 'delete'],
@@ -209,7 +207,9 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                     {'errors': 'Recipe is already in favorites.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            FavoriteRecipe.objects.create(user=request.user, recipe=recipe)
+            FavoriteRecipe.objects.create(
+                user=request.user, recipe=recipe
+            )
             return Response(
                 {
                     'id': recipe.id, 'name': recipe.name,
@@ -233,10 +233,14 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                 user=request.user, recipe=recipe
             ).exists():
                 return Response(
-                    {'errors': 'Recipe is already in shopping list.'},
+                    {
+                        'errors': 'Recipe is already in shopping list.'
+                    },
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            ShoppingCart.objects.create(user=request.user, recipe=recipe)
+            ShoppingCart.objects.create(
+                user=request.user, recipe=recipe
+            )
             return Response(
                 {
                     'id': recipe.id, 'name': recipe.name,
