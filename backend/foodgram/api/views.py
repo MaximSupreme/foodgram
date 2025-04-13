@@ -99,27 +99,36 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     )
     def subscribe(self, request, pk=None):
         author = self.get_object()
+        if request.method == 'POST' and request.user == author:
+            return Response(
+                {'detail': 'You cannot subscribe to yourself.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        subscription_exists = Subscription.objects.filter(
+            user=request.user,
+            author=author,
+        ).exists()
         if request.method == 'DELETE':
-            subscription = Subscription.objects.filter(
-                user=request.user,
-                author=author
-            ).first()
-            if not subscription:
+            if not subscription_exists:
                 return Response(
                     {'detail': 'You are not subscribed on this user.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            subscription.delete()
+            Subscription.objects.filter(
+                user=request.user,
+                author=author
+            ).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        if Subscription.objects.filter(
-            user=request.user, author=author
-        ).exists():
+        
+        if subscription_exists:
             return Response(
                 {'detail': 'You are already subscribed to this user.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
         subscription = Subscription.objects.create(
-            user=request.user, author=author
+            user=request.user, 
+            author=author
         )
         serializer = SubscriptionSerializer(
             subscription,
@@ -252,11 +261,10 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
                     'cooking_time': recipe.cooking_time
                 }, status=status.HTTP_201_CREATED
             )
-        if request.method == 'DELETE':
-            FavoriteRecipe.objects.filter(
-                user=request.user, recipe=recipe
-            ).delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
+        FavoriteRecipe.objects.filter(
+            user=request.user, recipe=recipe
+        ).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(
         detail=True, methods=['post', 'delete'],
