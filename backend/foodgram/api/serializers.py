@@ -9,7 +9,6 @@ from .models import (
     Subscription, ShoppingCart, FavoriteRecipe
 )
 from .mixins import SubscriptionMixin
-from .constants import MAX_STRING_CHAR
 
 CustomUser = get_user_model()
 
@@ -184,39 +183,18 @@ class RecipeMinifiedSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Recipe
-        fields = ('id', 'name', 'image', 'cooking_time')
-        read_only_fields = ('id', 'name', 'image', 'cooking_time')
-
-
-class RecipeIngredientSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(
-        source='ingredient.id'
-    )
-    name = serializers.CharField(
-        source='ingredient.name'
-    )
-    measurement_unit = serializers.CharField(
-        source='ingredient.measurement_unit'
-    )
-
-    class Meta:
-        model = RecipeIngredient
-        fields = ('id', 'name', 'measurement_unit', 'amount',)
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        return {
-            'id': representation['id'],
-            'name': representation['name'],
-            'measurement_unit': representation['measurement_unit'],
-            'amount': representation['amount'],
-        }
+        fields = (
+            'id', 'name', 'image', 'cooking_time'
+        )
+        read_only_fields = (
+            'id', 'name', 'image', 'cooking_time'
+        )
 
 
 class RecipeListSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     author = CustomUserSerializer(read_only=True)
-    ingredients = RecipeIngredientSerializer(
+    ingredients = IngredientInRecipeSerializer(
         source='recipeingredient_set', many=True, read_only=True
     )
     is_favorited = serializers.SerializerMethodField()
@@ -239,7 +217,9 @@ class RecipeListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
             if list_name == 'favorites':
-                return obj.favorited_by.filter(user=request.user).exists()
+                return obj.favorited_by.filter(
+                    user=request.user
+                ).exists()
             if list_name == 'shopping_cart':
                 return ShoppingCart.objects.filter(
                     recipe=obj, user=request.user
@@ -281,7 +261,9 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
-            return obj.favorited_by.filter(user=request.user).exists()
+            return obj.favorited_by.filter(
+                user=request.user
+            ).exists()
         return False
 
     def get_is_in_shopping_cart(self, obj):
@@ -293,7 +275,9 @@ class RecipeSerializer(serializers.ModelSerializer):
         return False
 
     def to_representation(self, instance):
-        return RecipeListSerializer(instance, context=self.context).data
+        return RecipeListSerializer(
+            instance, context=self.context
+        ).data
 
     def validate_ingredients(self, value):
         if not value:
