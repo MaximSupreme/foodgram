@@ -1,7 +1,6 @@
 import base64
 import hashlib
 
-from drf_base64.fields import Base64ImageField
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
@@ -16,14 +15,14 @@ from .paginators import RecipePagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
 from .models import (
-    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart, RecipeIngredient
+    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart
 )
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeListSerializer, TagSerializer,
     CustomUserSerializer, SetAvatarResponseSerializer,
     SetAvatarSerializer, CustomUserUpdateSerializer,
-    RecipeCreateSerializer, SubscriptionSerializer,
+    SubscriptionSerializer, RecipeSerializer
 )
 
 CustomUser = get_user_model()
@@ -188,56 +187,13 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
-            return RecipeCreateSerializer
+            return RecipeSerializer
         return RecipeListSerializer
 
-    def create(self, request, *args, **kwargs):
-        if 'image' not in request.data:
-            return Response(
-                {'image': ['This field is required!']},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            self.perform_create(serializer)
-        except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        recipe = serializer.instance
-        list_serializer = RecipeListSerializer(
-            recipe, context=self.get_serializer_context()
-        )
-        return Response(list_serializer.data, status=status.HTTP_201_CREATED)
-
-    def perform_create(self, serializer):
-        recipe = serializer.save(author=self.request.user)
-        ingredients_data = self.request.data.get('ingredients', [])
-        if hasattr(recipe, 'recipeingredient_set'):
-            recipe.recipeingredient_set.all().delete()
-        for ingredient_data in ingredients_data:
-            RecipeIngredient.objects.create(
-                recipe=recipe,
-                ingredient_id=ingredient_data['id'],
-                amount=ingredient_data['amount']
-            )
-        tags_data = self.request.data.get('tags', [])
-        recipe.tags.set(tags_data)
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=kwargs.pop('partial', False)
-        )
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        recipe = serializer.instance
-        list_serializer = RecipeListSerializer(
-            recipe, context=self.get_serializer_context()
-        )
-        return Response(list_serializer.data, status=status.HTTP_200_OK)
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
 
     @action(
         detail=True, methods=['post', 'delete'],
