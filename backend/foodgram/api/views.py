@@ -4,6 +4,7 @@ import hashlib
 from drf_base64.fields import Base64ImageField
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
@@ -31,15 +32,45 @@ CustomUser = get_user_model()
 class CustomUserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = [permissions.IsAuthenticated]
     pagination_class = PageNumberPagination
 
     def get_permissions(self):
+        if self.action in ('create',):
+            return []
         if self.action in (
             'me', 'avatar', 'subscribe', 'subscriptions'
         ):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
+
+    @action(
+        detail=False, methods=['get', 'put', 'patch'],
+        url_path='me',
+    )
+    def me(self, request):
+        if not request.user.is_authenticated or isinstance(request.user, AnonymousUser):
+            return Response(
+                {'detail': 'Authentication credentials were not provided.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        if request.method == 'GET':
+            try:
+                serializer = self.get_serializer(request.user)
+                return Response(serializer.data)
+            except AttributeError as e:
+                return Response(
+                    {'detail': 'Failed to serialize user data', 'error': str(e)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        serializer = CustomUserUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=request.method == 'PATCH',
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         serializer = CustomUserCreateSerializer(data=request.data)
@@ -55,29 +86,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             'avatar': user.avatar.url if user.avatar else None,
         }
         return Response(response_data, status=status.HTTP_201_CREATED)
-
-    @action(
-        detail=False, methods=['get', 'put', 'patch'],
-        url_path='me',
-    )
-    def me(self, request):
-        if not request.user.is_authenticated:
-            return Response(
-                {'detail': 'Credentials were not provided.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        if request.method == 'GET':
-            serializer = self.get_serializer(request.user)
-            return Response(serializer.data)
-        serializer = CustomUserUpdateSerializer(
-            request.user,
-            data=request.data,
-            partial=request.method == 'PATCH',
-            context={'request': request}
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(
         detail=False, methods=['put', 'delete'],

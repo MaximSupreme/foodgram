@@ -1,22 +1,21 @@
 import re
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from drf_base64.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
-from rest_framework.exceptions import NotAuthenticated
 
 from .models import (
     Ingredient, Recipe, RecipeIngredient, Tag,
     Subscription, ShoppingCart, FavoriteRecipe
 )
+from .mixins import SubscriptionMixin
 from .constants import MAX_STRING_CHAR
 
 CustomUser = get_user_model()
 
 
-class CustomUserSerializer(serializers.ModelSerializer):
+class CustomUserSerializer(SubscriptionMixin, serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
     avatar = serializers.SerializerMethodField()
 
@@ -31,21 +30,8 @@ class CustomUserSerializer(serializers.ModelSerializer):
         }
         read_only_fields = ('id', 'is_subscribed',)
 
-    def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        return request.user.is_authenticated and Subscription.objects.filter(
-            user=request.user, author=obj
-        ).exists()
-
     def get_avatar(self, obj):
         return obj.avatar.url if obj.avatar else None
-
-    def to_representation(self, instance):
-        if isinstance(instance, AnonymousUser):
-            raise NotAuthenticated(
-                detail='Authentication credentials were not provided.'
-            )
-        return super().to_representation(instance)
 
 
 class CustomUserCreateSerializer(serializers.ModelSerializer):
@@ -62,8 +48,7 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        user = CustomUser.objects.create_user(**validated_data)
-        return user
+        return CustomUser.objects.create_user(**validated_data)
 
     def validate_username(self, name):
         if not re.match(r'^[\w.@+-]+$', name):
@@ -105,7 +90,7 @@ class CustomUserUpdateSerializer(serializers.ModelSerializer):
         }
 
 
-class SubscriptionSerializer(serializers.ModelSerializer):
+class SubscriptionSerializer(SubscriptionMixin, serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source='author.id')
     email = serializers.ReadOnlyField(source='author.email')
     username = serializers.ReadOnlyField(source='author.username')
@@ -123,18 +108,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             'last_name', 'is_subscribed', 'recipes', 'recipes_count'
         )
 
-    def get_is_subscribed(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return Subscription.objects.filter(
-                user=request.user,
-                author=obj.author
-            ).exists()
-        return False
-
     def get_recipes(self, obj):
-        from .serializers import RecipeMinifiedSerializer
-        recipes = obj.user.recipes.all()
+        recipes = obj.author.recipes.all()
         recipes_limit = self.context.get('recipes_limit')
         if recipes_limit:
             recipes = recipes[:int(recipes_limit)]
@@ -145,26 +120,21 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         ).data
 
     def get_recipes_count(self, obj):
-        return obj.user.recipes.count()
+        return obj.author.recipes.count()
 
     def get_avatar(self, obj):
-        request = self.context.get('request')
-        if obj.user.avatar:
-            return request.build_absolute_url(obj.user.avatar.url)
+        if obj.author.avatar:
+            return self.context['request'].build_absolute_url(
+                obj.author.avatar.url
+            )
         return None
 
 
 class SetAvatarSerializer(serializers.Serializer):
-    avatar = serializers.CharField()
+    avatar = Base64ImageField()
 
-    def validate_avatar(self, value):
-        try:
-            Base64ImageField().to_internal_value(value)
-        except serializers.ValidationError as e:
-            raise e
-        except Exception as e:
-            raise serializers.ValidationError(f'Invalid image {e}')
-        return value
+    class Meta:
+        fields = ('avatar',)
 
 
 class SetAvatarResponseSerializer(serializers.Serializer):
