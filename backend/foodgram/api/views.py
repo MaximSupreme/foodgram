@@ -72,21 +72,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def create(self, request, *args, **kwargs):
-        serializer = CustomUserCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        response_data = {
-            'email': user.email,
-            'id': user.id,
-            'username': user.username,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-            'is_subscribed': False,
-            'avatar': user.avatar.url if user.avatar else None,
-        }
-        return Response(response_data, status=status.HTTP_201_CREATED)
-
     @action(
         detail=False, methods=['put', 'delete'],
         url_path='me/avatar',
@@ -339,16 +324,16 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         cart_items = ShoppingCart.objects.filter(user=request.user)
         ingredients = {}
         for item in cart_items:
-            for ingredient in item.recipe.ingredients.all():
+            recipe_ingredients = item.recipe.recipeingredient_set.all()
+            for recipe_ingredient in recipe_ingredients:
+                ingredient = recipe_ingredient.ingredient
                 key = f"{ingredient.name} ({ingredient.measurement_unit})"
-                ingredients[key] = ingredients.get(key, 0) + ingredient.amount
+                ingredients[key] = ingredients.get(key, 0) + recipe_ingredient.amount
         content = "Список покупок:\n\n"
         for name, amount in sorted(ingredients.items()):
             content += f"{name} — {amount}\n"
         response = HttpResponse(content, content_type='text/plain')
-        response[
-            'Content-Disposition'
-        ] = 'attachment; filename="shopping_list.txt"'
+        response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
         return response
 
     @action(

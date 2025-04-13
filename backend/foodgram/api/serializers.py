@@ -451,16 +451,16 @@ class ShoppingCartSerializer(serializers.ModelSerializer):
         read_only_fields = ('user',)
 
 
-class ShoppingCartDownloadSerializer(serializers.Serializer):
-    ingredients = serializers.SerializerMethodField()
+# class ShoppingCartDownloadSerializer(serializers.Serializer):
+#     ingredients = serializers.SerializerMethodField()
 
-    def get_ingredients(self, obj):
-        ingredients = {}
-        for recipe in obj.recipes.all():
-            for ingredient in recipe.ingredients.all():
-                key = f"{ingredient.name} ({ingredient.measurement_unit})"
-                if key in ingredients:
-                    ingredients[key] += ingredient.amount
-                else:
-                    ingredients[key] = ingredient.amount
-        return [f"{name} — {amount}" for name, amount in ingredients.items()]
+#     def get_ingredients(self, obj):
+#         ingredients = {}
+#         for recipe in obj.recipes.all():
+#             for ingredient in recipe.ingredients.all():
+#                 key = f"{ingredient.name} ({ingredient.measurement_unit})"
+#                 if key in ingredients:
+#                     ingredients[key] += ingredient.amount
+#                 else:
+#                     ingredients[key] = ingredient.amount
+#         return [f"{name} — {amount}" for name, amount in ingredients.items()]
