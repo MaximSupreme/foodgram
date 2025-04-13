@@ -131,10 +131,17 @@ class SubscriptionSerializer(SubscriptionMixin, serializers.ModelSerializer):
 
 
 class SetAvatarSerializer(serializers.Serializer):
-    avatar = Base64ImageField()
+    avatar = Base64ImageField(required=True)
 
     class Meta:
         fields = ('avatar',)
+
+    def validate_avatar(self, value):
+        if not value.name.lower().endswith(('.jpg', '.jpeg', '.png')):
+            raise serializers.ValidationError(
+                'Only JPG, JPEG and PNG images are allowed'
+            )
+        return value
 
 
 class SetAvatarResponseSerializer(serializers.Serializer):

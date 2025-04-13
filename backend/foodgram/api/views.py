@@ -16,14 +16,14 @@ from .paginators import RecipePagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
 from .models import (
-    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart
+    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart, RecipeIngredient
 )
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
     IngredientSerializer, RecipeListSerializer, TagSerializer,
     CustomUserSerializer, SetAvatarResponseSerializer,
-    SetAvatarSerializer, CustomUserCreateSerializer,
-    CustomUserUpdateSerializer, RecipeCreateSerializer, SubscriptionSerializer,
+    SetAvatarSerializer, CustomUserUpdateSerializer,
+    RecipeCreateSerializer, SubscriptionSerializer,
 )
 
 CustomUser = get_user_model()
@@ -81,15 +81,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         if request.method == 'PUT':
             serializer = SetAvatarSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            avatar_data = serializer.validated_data['avatar']
-            try:
-                user.avatar = Base64ImageField().to_internal_value(avatar_data)
-                user.save()
-            except Exception as e:
-                return Response(
-                    {'avatar': [str(e)]},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            user.avatar = serializer.validated_data['avatar']
+            user.save()
             return Response(
                 SetAvatarResponseSerializer(
                     {'avatar': user.avatar.url}
@@ -173,7 +166,6 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     queryset = Recipe.objects.all()
-    serializer_class = RecipeListSerializer
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly
     ]
@@ -213,14 +205,17 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         recipe = serializer.save(author=self.request.user)
-        ingredients = self.request.data.get('ingredients', [])
-        for ingredient in ingredients:
-            recipe.ingredients.add(
-                ingredient['id'],
-                through_defaults={'amount': ingredient['amount']}
+        ingredients_data = self.request.data.get('ingredients', [])
+        if hasattr(recipe, 'recipeingredient_set'):
+            recipe.recipeingredient_set.all().delete()
+        for ingredient_data in ingredients_data:
+            RecipeIngredient.objects.create(
+                recipe=recipe,
+                ingredient_id=ingredient_data['id'],
+                amount=ingredient_data['amount']
             )
-        tags = self.request.data.get('tags', [])
-        recipe.tags.set(tags)
+        tags_data = self.request.data.get('tags', [])
+        recipe.tags.set(tags_data)
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
