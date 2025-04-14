@@ -78,7 +78,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
     def me(self, request):
         if not isinstance(request.user, AnonymousUser):
             return Response(
-                {'detail': 'Authentication credentials were not provided.'},
+                {'detail':
+                 'Authentication credentials were not provided.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
         if request.method == 'GET':
@@ -88,7 +89,8 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             except AttributeError as e:
                 return Response(
                     {
-                        'detail': 'Failed to serialize user data', 'error': str(e)
+                        'detail':
+                        'Failed to serialize user data', 'error': str(e)
                     },
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
@@ -315,7 +317,9 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
     def download_shopping_list(self, request):
         ingredients = (
             RecipeIngredient.objects
-            .filter(recipe__in_shopping_cart__user=request.user)
+            .filter(
+                recipe__in_shopping_cart__user=request.user
+            )
             .values(
                 'ingredient__name',
                 'ingredient__measurement_unit'
@@ -329,8 +333,12 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
             unit = item['ingredient__measurement_unit']
             amount = item['total_amount']
             content += f"{name} ({unit}) — {amount}\n"
-        response = HttpResponse(content, content_type='text/plain')
-        response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
+        response = HttpResponse(
+            content, content_type='text/plain'
+        )
+        response[
+            'Content-Disposition'
+        ] = 'attachment; filename="shopping_list.txt"'
         return response
 
     @action(

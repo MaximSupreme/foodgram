@@ -58,11 +58,16 @@ class CustomUserCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         username = data.get('username')
         email = data.get('email')
-        if CustomUser.objects.filter(username=username, email=email).exists():
+        if CustomUser.objects.filter(
+            username=username, email=email
+        ).exists():
             return data
         if CustomUser.objects.filter(email=email).exists():
             raise serializers.ValidationError(
-                {'email': 'This email is already in use by another user.'}
+                {
+                    'email':
+                    'This email is already in use by another user.'
+                }
             )
         if CustomUser.objects.filter(username=username).exists():
             raise serializers.ValidationError(
