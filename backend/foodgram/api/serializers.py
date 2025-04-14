@@ -111,20 +111,14 @@ class SubscriptionSerializer(SubscriptionMixin, serializers.ModelSerializer):
         recipes_limit = self.context.get('recipes_limit')
         if recipes_limit:
             recipes = recipes[:int(recipes_limit)]
-        return RecipeMinifiedSerializer(
-            recipes,
-            many=True,
-            context=self.context
-        ).data
+        return RecipeMinifiedSerializer(recipes, many=True).data
 
     def get_recipes_count(self, obj):
         return obj.author.recipes.count()
 
     def get_avatar(self, obj):
         if obj.author.avatar:
-            return self.context['request'].build_absolute_url(
-                obj.author.avatar.url
-            )
+            return self.context['request'].build_absolute_url(obj.author.avatar.url)
         return None
 
 

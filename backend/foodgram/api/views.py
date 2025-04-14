@@ -12,7 +12,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
-from .paginators import RecipePagination
+from .paginators import RecipePagination, SubscriptionPagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
 from .models import (
@@ -42,6 +42,34 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         ):
             return [permissions.IsAuthenticated()]
         return super().get_permissions()
+
+    def get_serializer_class(self):
+        if self.action == 'subscriptions':
+            return SubscriptionSerializer
+        return CustomUserSerializer
+
+    @action(
+        detail=False, 
+        methods=['GET'],
+        url_path='subscriptions',
+    )
+    def subscriptions(self, request):
+        subscriptions = Subscription.objects.filter(user=request.user).select_related('author')
+        paginator = SubscriptionPagination()
+        page = paginator.paginate_queryset(subscriptions, request)
+        recipes_limit = request.query_params.get('recipes_limit')
+        # if recipes_limit:
+        #     paginator.recipes_limit = recipes_limit
+        # page = paginator.paginate_queryset(subscriptions, request)
+        serializer = SubscriptionSerializer(
+            page,
+            many=True,
+            context={
+                'request': request,
+                'recipes_limit': recipes_limit
+            }
+        )
+        return paginator.get_paginated_response(serializer.data)
 
     @action(
         detail=False, methods=['get', 'put', 'patch'],
@@ -97,7 +125,9 @@ class CustomUserViewSet(viewsets.ModelViewSet):
 
     @action(
         detail=True, methods=['POST', 'DELETE'],
-        permission_classes=[permissions.IsAuthenticated]
+        permission_classes=[permissions.IsAuthenticated],
+        url_path='subscribe',
+        url_name='subscribe',
     )
     def subscribe(self, request, pk=None):
         author = self.get_object()
@@ -138,23 +168,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
             }
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    @action(detail=False, methods=['GET'],)
-    def subscriptions(self, request):
-        queryset = CustomUser.objects.filter(subscriber__user=request.user)
-        paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(queryset, request)
-        if page is not None:
-            serializer = SubscriptionSerializer(
-                page, many=True,
-                context={'request': request}
-            )
-            return paginator.get_paginated_response(serializer.data)
-        serializer = SubscriptionSerializer(
-            queryset, many=True,
-            context={'request', request}
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):

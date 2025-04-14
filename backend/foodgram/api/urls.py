@@ -22,6 +22,11 @@ router.register(
 
 urlpatterns = [
     path(
+        r'users/subscriptions/', CustomUserViewSet.as_view(
+            {'get': 'subscriptions'}
+        )
+    ),
+    path(
         '', include('djoser.urls')
     ),
     path(
