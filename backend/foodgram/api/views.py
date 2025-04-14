@@ -16,7 +16,8 @@ from .paginators import RecipePagination, SubscriptionPagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
 from .models import (
-    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart, RecipeIngredient
+    Ingredient, Recipe, Tag, Subscription,
+    FavoriteRecipe, ShoppingCart, RecipeIngredient
 )
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
@@ -54,13 +55,12 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         url_path='subscriptions',
     )
     def subscriptions(self, request):
-        subscriptions = Subscription.objects.filter(user=request.user).select_related('author')
+        subscriptions = Subscription.objects.filter(
+            user=request.user
+        ).select_related('author')
         paginator = SubscriptionPagination()
         page = paginator.paginate_queryset(subscriptions, request)
         recipes_limit = request.query_params.get('recipes_limit')
-        # if recipes_limit:
-        #     paginator.recipes_limit = recipes_limit
-        # page = paginator.paginate_queryset(subscriptions, request)
         serializer = SubscriptionSerializer(
             page,
             many=True,

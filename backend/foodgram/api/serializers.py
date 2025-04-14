@@ -118,7 +118,9 @@ class SubscriptionSerializer(SubscriptionMixin, serializers.ModelSerializer):
 
     def get_avatar(self, obj):
         if obj.author.avatar:
-            return self.context['request'].build_absolute_url(obj.author.avatar.url)
+            return self.context['request'].build_absolute_url(
+                obj.author.avatar.url
+            )
         return None
 
 
