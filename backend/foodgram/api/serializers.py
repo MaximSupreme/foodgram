@@ -8,7 +8,7 @@ from .models import (
     Ingredient, Recipe, RecipeIngredient, Tag,
     Subscription, ShoppingCart, FavoriteRecipe
 )
-from .mixins import SubscriptionMixin
+from .mixins import SubscriptionMixin, FavoriteShoppingCartMixin
 
 CustomUser = get_user_model()
 
@@ -192,7 +192,9 @@ class RecipeMinifiedSerializer(serializers.ModelSerializer):
         )
 
 
-class RecipeListSerializer(serializers.ModelSerializer):
+class RecipeListSerializer(
+    FavoriteShoppingCartMixin, serializers.ModelSerializer
+):
     tags = TagSerializer(many=True, read_only=True)
     author = CustomUserSerializer(read_only=True)
     ingredients = IngredientInRecipeSerializer(
@@ -214,27 +216,10 @@ class RecipeListSerializer(serializers.ModelSerializer):
             'is_favorited', 'is_in_shopping_cart'
         )
 
-    def is_in_list(self, obj, list_name):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            if list_name == 'favorites':
-                return obj.favorited_by.filter(
-                    user=request.user
-                ).exists()
-            if list_name == 'shopping_cart':
-                return ShoppingCart.objects.filter(
-                    recipe=obj, user=request.user
-                ).exists()
-        return False
 
-    def get_is_favorited(self, obj):
-        return self.is_in_list(obj, 'favorites')
-
-    def get_is_in_shopping_cart(self, obj):
-        return self.is_in_list(obj, 'shopping_cart')
-
-
-class RecipeSerializer(serializers.ModelSerializer):
+class RecipeSerializer(
+    FavoriteShoppingCartMixin, serializers.ModelSerializer
+):
     tags = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Tag.objects.all()
@@ -258,27 +243,27 @@ class RecipeSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id', 'author', 'is_favorited', 'is_in_shopping_cart'
         )
-
-    def get_is_favorited(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return obj.favorited_by.filter(
-                user=request.user
-            ).exists()
-        return False
-
-    def get_is_in_shopping_cart(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return ShoppingCart.objects.filter(
-                recipe=obj, user=request.user
-            ).exists()
-        return False
+        extra_kwargs = {
+            'ingredients': {'required': True},
+            'tags': {'required': True},
+        }
 
     def to_representation(self, instance):
         return RecipeListSerializer(
             instance, context=self.context
         ).data
+
+    def validate(self, data):
+        if self.context['request'].method == 'PATCH':
+            if 'ingredients' not in data:
+                raise serializers.ValidationError(
+                    {'ingredients': 'This field is required.'}
+                )
+            if 'tags' not in data:
+                raise serializers.ValidationError(
+                    {'tags': 'This field is required.'}
+                )
+        return data
 
     def validate_ingredients(self, value):
         if not value:

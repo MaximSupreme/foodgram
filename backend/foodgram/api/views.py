@@ -13,7 +13,7 @@ from rest_framework.pagination import PageNumberPagination
 
 from .paginators import RecipePagination, SubscriptionPagination
 from .filters import RecipeFilter, IngredientFilter
-from .mixins import AddDeleteRecipeMixin
+from .mixins import AddDeleteRecipeMixin, RecipeListActionsMixin
 from .models import (
     Ingredient, Recipe, Tag, Subscription,
     FavoriteRecipe, ShoppingCart, RecipeIngredient
@@ -169,7 +169,9 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None
 
 
-class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
+class RecipeViewSet(
+    AddDeleteRecipeMixin, RecipeListActionsMixin, viewsets.ModelViewSet
+):
     queryset = Recipe.objects.all()
     permission_classes = [
         permissions.IsAuthenticatedOrReadOnly,
@@ -225,28 +227,14 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated]
     )
     def favorites(self, request):
-        recipes = Recipe.objects.filter(
-            favorited_by__user=request.user
-        ).select_related('author').prefetch_related(
-            'tags', 'recipeingredient_set'
-        )
-        page = self.paginate_queryset(recipes)
-        serializer = self.get_serializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
+        return self._get_user_recipes(request, 'favorited_by')
 
     @action(
         detail=False, methods=['get'],
         permission_classes=[permissions.IsAuthenticated]
     )
     def shopping_list(self, request):
-        recipes = Recipe.objects.filter(
-            shopping_carts__user=request.user
-        ).select_related('author').prefetch_related(
-            'tags', 'recipeingredient_set__ingredient'
-        )
-        page = self.paginate_queryset(recipes)
-        serializer = self.get_serializer(page, many=True)
-        return self.get_paginated_response(serializer.data)
+        return self._get_user_recipes(request, 'shopping_carts')
 
     @action(
         detail=False,
