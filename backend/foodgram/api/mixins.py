@@ -5,36 +5,36 @@ from .models import Subscription
 
 
 class AddDeleteRecipeMixin:
-    def _get_list_queryset(self, user, list_name):
-        return getattr(user, list_name)
 
-    def _get_recipe_serializer(self):
-        from .serializers import RecipeMinifiedSerializer
-        return RecipeMinifiedSerializer
-
-    def add_or_remove_recipe(self, request, pk=None, list_name=None):
+    def _add_delete_recipe(self, request, pk, model, error_message):
         recipe = self.get_object()
         user = request.user
-        list_queryset = self._get_list_queryset(user, list_name)
-        item_exists = list_queryset.filter(recipe=recipe).exists()
+        obj_exists = model.objects.filter(user=user, recipe=recipe).exists()
+        
         if request.method == 'POST':
-            if item_exists:
+            if obj_exists:
                 return Response(
-                    {'detail': 'Recipe is already in the list.'},
+                    {'errors': error_message['exists']},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            list_queryset.add(recipe)
-            serializer_class = self._get_recipe_serializer()
+            model.objects.create(user=user, recipe=recipe)
             return Response(
-                serializer_class(recipe).data,
+                {
+                    'id': recipe.id,
+                    'name': recipe.name,
+                    'image': recipe.image.url,
+                    'cooking_time': recipe.cooking_time
+                },
                 status=status.HTTP_201_CREATED
             )
-        if not item_exists:
+            
+        if not obj_exists:
             return Response(
-                {'detail': 'Recipe is not in the list.'},
+                {'errors': error_message['not_found']},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        list_queryset.remove(recipe)
+            
+        model.objects.filter(user=user, recipe=recipe).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

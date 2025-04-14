@@ -4,7 +4,6 @@ import hashlib
 from django.conf import settings
 from django.db.models import Sum
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
@@ -76,24 +75,6 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         url_path='me',
     )
     def me(self, request):
-        if not isinstance(request.user, AnonymousUser):
-            return Response(
-                {'detail':
-                 'Authentication credentials were not provided.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        if request.method == 'GET':
-            try:
-                serializer = self.get_serializer(request.user)
-                return Response(serializer.data)
-            except AttributeError as e:
-                return Response(
-                    {
-                        'detail':
-                        'Failed to serialize user data', 'error': str(e)
-                    },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
         serializer = CustomUserUpdateSerializer(
             request.user,
             data=request.data,
@@ -214,70 +195,30 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         permission_classes=[permissions.IsAuthenticated]
     )
     def favorite(self, request, pk=None):
-        recipe = self.get_object()
-        if request.method == 'POST':
-            if FavoriteRecipe.objects.filter(
-                user=request.user, recipe=recipe
-            ).exists():
-                return Response(
-                    {'errors': 'Recipe is already in favorites.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            FavoriteRecipe.objects.create(
-                user=request.user, recipe=recipe
-            )
-            return Response(
-                {
-                    'id': recipe.id, 'name': recipe.name,
-                    'image': recipe.image.url,
-                    'cooking_time': recipe.cooking_time
-                }, status=status.HTTP_201_CREATED
-            )
-        deleted_count, _ = FavoriteRecipe.objects.filter(
-            user=request.user, recipe=recipe
-        ).delete()
-        if deleted_count == 0:
-            return Response(
-                {'errors': 'Recipe was not in favorite.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return self._add_delete_recipe(
+            request,
+            pk,
+            FavoriteRecipe,
+            {
+                'exists': 'Recipe is already in favorites.',
+                'not_found': 'Recipe was not in favorite.'
+            }
+        )
 
     @action(
         detail=True, methods=['post', 'delete'],
         permission_classes=[permissions.IsAuthenticated]
     )
     def shopping_cart(self, request, pk=None):
-        recipe = self.get_object()
-        if request.method == 'POST':
-            if ShoppingCart.objects.filter(
-                user=request.user, recipe=recipe
-            ).exists():
-                return Response(
-                    {
-                        'errors': 'Recipe is already in shopping list.'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            ShoppingCart.objects.create(
-                user=request.user, recipe=recipe
-            )
-            return Response(
-                {
-                    'id': recipe.id, 'name': recipe.name,
-                    'image': recipe.image.url,
-                    'cooking_time': recipe.cooking_time
-                }, status=status.HTTP_201_CREATED
-            )
-        deleted_count, _ = ShoppingCart.objects.filter(
-            user=request.user, recipe=recipe
-        ).delete()
-        if deleted_count == 0:
-            return Response(
-                {'errors': 'Recipe was not in shopping cart.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return self._add_delete_recipe(
+            request,
+            pk,
+            ShoppingCart,
+            {
+                'exists': 'Recipe is already in shopping list.',
+                'not_found': 'Recipe was not in shopping cart.'
+            }
+        )
 
     @action(
         detail=False, methods=['get'],
