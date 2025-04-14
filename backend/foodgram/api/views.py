@@ -2,6 +2,7 @@ import base64
 import hashlib
 
 from django.conf import settings
+from django.db.models import Sum
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpResponse
@@ -15,7 +16,7 @@ from .paginators import RecipePagination
 from .filters import RecipeFilter, IngredientFilter
 from .mixins import AddDeleteRecipeMixin
 from .models import (
-    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart
+    Ingredient, Recipe, Tag, Subscription, FavoriteRecipe, ShoppingCart, RecipeIngredient
 )
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (
@@ -299,17 +300,22 @@ class RecipeViewSet(AddDeleteRecipeMixin, viewsets.ModelViewSet):
         url_name='download_shopping_cart'
     )
     def download_shopping_list(self, request):
-        cart_items = ShoppingCart.objects.filter(user=request.user)
-        ingredients = {}
-        for item in cart_items:
-            recipe_ingredients = item.recipe.recipeingredient_set.all()
-            for recipe_ingredient in recipe_ingredients:
-                ingredient = recipe_ingredient.ingredient
-                key = f"{ingredient.name} ({ingredient.measurement_unit})"
-                ingredients[key] = ingredients.get(key, 0) + recipe_ingredient.amount
+        ingredients = (
+            RecipeIngredient.objects
+            .filter(recipe__in_shopping_cart__user=request.user)
+            .values(
+                'ingredient__name',
+                'ingredient__measurement_unit'
+            )
+            .annotate(total_amount=Sum('amount'))
+            .order_by('ingredient__name')
+        )
         content = "Список покупок:\n\n"
-        for name, amount in sorted(ingredients.items()):
-            content += f"{name} — {amount}\n"
+        for item in ingredients:
+            name = item['ingredient__name']
+            unit = item['ingredient__measurement_unit']
+            amount = item['total_amount']
+            content += f"{name} ({unit}) — {amount}\n"
         response = HttpResponse(content, content_type='text/plain')
         response['Content-Disposition'] = 'attachment; filename="shopping_list.txt"'
         return response
