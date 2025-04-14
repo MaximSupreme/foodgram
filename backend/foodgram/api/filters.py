@@ -1,13 +1,13 @@
 import django_filters
-from django_filters.rest_framework import CharFilter, FilterSet
+# from django_filters.rest_framework import CharFilter, FilterSet
 
 from .models import (
     CustomUser, Recipe, Tag, FavoriteRecipe, Ingredient
 )
 
 
-class CustomUserFilter(FilterSet):
-    username = CharFilter(
+class CustomUserFilter(django_filters.FilterSet):
+    username = django_filters.CharFilter(
         field_name='username', lookup_expr='icontains',
     )
 
