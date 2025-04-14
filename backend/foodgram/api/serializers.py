@@ -170,7 +170,7 @@ class IngredientInRecipeSerializer(serializers.ModelSerializer):
         source='ingredient.name', read_only=True
     )
     measurement_unit = serializers.CharField(
-        source='ingredient.measurement_unit', 
+        source='ingredient.measurement_unit',
         read_only=True
     )
 
@@ -236,7 +236,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
 class RecipeSerializer(serializers.ModelSerializer):
     tags = serializers.PrimaryKeyRelatedField(
-        many=True, 
+        many=True,
         queryset=Tag.objects.all()
     )
     ingredients = serializers.ListField(
@@ -301,7 +301,9 @@ class RecipeSerializer(serializers.ModelSerializer):
                 amount = int(item['amount'])
                 if ingredient_id in seen_ids:
                     raise serializers.ValidationError(
-                        f'These is duplicate ingredient with ID {ingredient_id}'
+                        f'These is duplicate ingredient with ID {
+                            ingredient_id
+                        }'
                     )
                 seen_ids.add(ingredient_id)
                 if not Ingredient.objects.filter(id=ingredient_id).exists():

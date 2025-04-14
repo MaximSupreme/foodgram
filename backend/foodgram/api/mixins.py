@@ -7,7 +7,7 @@ from .models import Subscription
 class AddDeleteRecipeMixin:
     def _get_list_queryset(self, user, list_name):
         return getattr(user, list_name)
-    
+
     def _get_recipe_serializer(self):
         from .serializers import RecipeMinifiedSerializer
         return RecipeMinifiedSerializer

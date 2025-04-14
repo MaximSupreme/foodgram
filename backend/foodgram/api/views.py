@@ -50,7 +50,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
         return CustomUserSerializer
 
     @action(
-        detail=False, 
+        detail=False,
         methods=['GET'],
         url_path='subscriptions',
     )
@@ -159,7 +159,7 @@ class CustomUserViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         subscription = Subscription.objects.create(
-            user=request.user, 
+            user=request.user,
             author=author
         )
         serializer = SubscriptionSerializer(
