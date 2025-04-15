@@ -254,7 +254,7 @@ class RecipeSerializer(
         ).data
 
     def validate(self, data):
-        if self.context['request'].method == 'PATCH':
+        if self.context['request'].method in ['POST', 'PATCH']:
             if 'ingredients' not in data:
                 raise serializers.ValidationError(
                     {'ingredients': 'This field is required.'}
